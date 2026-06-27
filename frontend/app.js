@@ -173,6 +173,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Wallet Helper Functions
 async function initWallet() {
+  const isAuthorized = localStorage.getItem('deposhield_wallet_authorized') === 'true';
+  if (!isAuthorized) {
+    return; // Do not trigger Freighter popup automatically on load/refresh
+  }
+
   const connectedResult = await isConnected();
   if (connectedResult && connectedResult.isConnected) {
     try {
@@ -208,6 +213,7 @@ async function connectWallet() {
 
 function setConnectedWallet(address) {
   userAddress = address;
+  localStorage.setItem('deposhield_wallet_authorized', 'true');
   walletAddress.textContent = `${address.slice(0, 6)}...${address.slice(-6)}`;
   walletInfo.classList.remove('hidden');
   btnConnect.classList.add('hidden');
@@ -222,6 +228,7 @@ function setConnectedWallet(address) {
 
 function disconnectWallet() {
   userAddress = null;
+  localStorage.removeItem('deposhield_wallet_authorized');
   walletInfo.classList.add('hidden');
   btnConnect.classList.remove('hidden');
   
