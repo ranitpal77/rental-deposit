@@ -173,21 +173,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Wallet Helper Functions
 async function initWallet() {
-  const isAuthorized = localStorage.getItem('deposhield_wallet_authorized') === 'true';
-  if (!isAuthorized) {
-    return; // Do not trigger Freighter popup automatically on load/refresh
-  }
-
-  const connectedResult = await isConnected();
-  if (connectedResult && connectedResult.isConnected) {
-    try {
-      const accessResult = await requestAccess();
-      if (accessResult && accessResult.address) {
-        setConnectedWallet(accessResult.address);
-      }
-    } catch (e) {
-      console.log('User did not authorize wallet details auto-connect.');
-    }
+  const storedAddress = localStorage.getItem('deposhield_connected_address');
+  if (storedAddress) {
+    setConnectedWallet(storedAddress);
   }
 }
 
@@ -213,7 +201,7 @@ async function connectWallet() {
 
 function setConnectedWallet(address) {
   userAddress = address;
-  localStorage.setItem('deposhield_wallet_authorized', 'true');
+  localStorage.setItem('deposhield_connected_address', address);
   walletAddress.textContent = `${address.slice(0, 6)}...${address.slice(-6)}`;
   walletInfo.classList.remove('hidden');
   btnConnect.classList.add('hidden');
@@ -228,7 +216,7 @@ function setConnectedWallet(address) {
 
 function disconnectWallet() {
   userAddress = null;
-  localStorage.removeItem('deposhield_wallet_authorized');
+  localStorage.removeItem('deposhield_connected_address');
   walletInfo.classList.add('hidden');
   btnConnect.classList.remove('hidden');
   
