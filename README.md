@@ -118,39 +118,141 @@ flowchart LR
 
 ---
 
-## 🛠️ Setup Instructions (How to run locally)
+## 🛠️ Setup & Local Development Guide
 
-### Prerequisites
-- Node.js (v20 or higher recommended)
-- Rust and Cargo (for smart contract compilation)
-- Freighter Wallet extension installed in your browser
+Follow these steps to run the complete Deposhield platform locally, compile and test the smart contracts, deploy to the Stellar Testnet, and run the frontend/backend servers.
 
-### 1. Build the Smart Contract
-Verify the smart contract builds and passes unit tests:
+---
+
+### 📋 Prerequisites
+
+To run this project, you will need the following tools installed on your local machine:
+
+1. **Node.js** (v18.0.0 or higher recommended)
+2. **Rust & Cargo** (for compiled Soroban smart contracts)
+3. **Rust WASM Target**:
+   ```bash
+   rustup target add wasm32-unknown-unknown
+   ```
+4. **Stellar CLI** (v21.0.0 or higher recommended, to compile and deploy contracts):
+   ```bash
+   cargo install --locked stellar-cli --features opt
+   ```
+5. **Freighter Wallet Extension** (installed in your Chrome/Firefox/Edge browser). Get it from the [Freighter Website](https://www.freighter.app/).
+
+---
+
+### 💳 1. Freighter Wallet Setup
+
+To test the multi-party interaction (Tenant ↔️ Landlord ↔️ Arbitrator), you should set up three test accounts:
+
+1. Open the Freighter extension and create/import a wallet.
+2. In Freighter's settings, switch the network from **Public** to **Testnet** (Settings > Network > Select **Testnet**).
+3. Create three separate accounts within Freighter:
+   - **Account 1: Tenant** (e.g., `GD7H...`)
+   - **Account 2: Landlord** (e.g., `GB54...`)
+   - **Account 3: Arbitrator** (e.g., `GAAR...`)
+4. Fund all three accounts with Testnet XLM using the **Fund** button in Freighter or via the [Stellar Laboratory Friendbot](https://lab.stellar.org/r/testnet/create-account).
+
+---
+
+### 📦 2. Compile & Test Smart Contracts
+
+The core rental escrow logic is written as a Soroban Rust contract under `contracts/escrow`.
+
+1. **Run Unit Tests**:
+   Verify that all 9 smart contract tests compile and pass:
+   ```bash
+   cd contracts/escrow
+   cargo test
+   ```
+2. **Build WASM Binary**:
+   Compile the optimized WebAssembly binary:
+   ```bash
+   # Run the compilation script from the workspace root directory:
+   node scripts/deploy.js
+   ```
+   This compiles the contract and displays the target WASM path along with instructions to deploy it.
+
+---
+
+### 🚀 3. Deploy Contract to Testnet
+
+To deploy the compiled contract to the Stellar Testnet:
+
+1. Deploy the WASM binary using the Stellar CLI:
+   ```bash
+   stellar contract deploy \
+     --wasm contracts/escrow/target/wasm32-unknown-unknown/release/escrow.wasm \
+     --source <YOUR_STELLAR_SECRET_KEY> \
+     --network testnet
+   ```
+   *(Replace `<YOUR_STELLAR_SECRET_KEY>` with the secret key of your Tenant or Developer account)*
+
+2. **Save the Contract ID**:
+   The deploy command outputs a unique **Contract ID** (e.g., `CALSOH3GT4ZC4TSQRMMSJFDXGHUJDIAMM6HE52APRQECHI3OC7PCGURI`). Copy this ID; you will use it in the frontend web dashboard.
+
+---
+
+### 🖥️ 4. Start the Services
+
+The workspace contains a placeholder template in the root, but the actual Deposhield dApp components are located in the `backend` and `frontend` folders. Run them in separate terminal instances:
+
+#### A. Start the Backend Coordination Server
+The backend coordinates off-chain metadata (lease titles, descriptions, status tracking) and simulates transactional email/SMS notifications to the console.
 ```bash
-# Compile and run unit tests
-cd contracts/escrow
-cargo test
-
-# Compile optimized WASM binary
-node ../../scripts/deploy.js
-```
-
-### 2. Run the Backend Coordination Server
-```bash
+# Navigate to the backend folder
 cd backend
-npm install
-npm start
-# Server runs on http://localhost:5000
-```
 
-### 3. Run the Frontend Web Dashboard
-```bash
-cd frontend
+# Install dependencies
 npm install
-npm run dev
-# Vite server runs on http://localhost:3000
+
+# Run the backend server
+npm start
 ```
+*The backend server will run at `http://localhost:5000`.*
+
+#### B. Start the Frontend Web Dashboard
+The frontend is a vanilla JS application built with Vite that connects to Freighter and interacts directly with the Stellar Testnet RPC.
+```bash
+# Navigate to the frontend folder
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start the local development server
+npm run dev
+```
+*The web interface will run at `http://localhost:3000`.*
+
+---
+
+### 🔄 5. End-to-End Walkthrough (How to Play)
+
+1. Open **`http://localhost:3000`** in your browser.
+2. Click **Connect Wallet** and authorize Freighter. Your active account's address will be shown in the navigation bar.
+3. **Step A: Initialize a Lease (Tenant)**
+   - Click the **Create Escrow** tab.
+   - Enter a **Lease Title** (e.g., "Apartment 5C - City Center") and **Description**.
+   - Input the **Landlord Public Key** (Account 2 address) and **Arbitrator Public Key** (Account 3 address).
+   - Set the **Deposit Amount** in XLM.
+   - Input your **Deployed Contract ID** (from Step 3).
+   - Click **Initialize Escrow**. The backend server logs will output a notification alerting the landlord.
+4. **Step B: Fund the Escrow (Tenant)**
+   - Switch to the **Manage Escrow** tab and search for your Contract ID.
+   - Click **Fund Escrow**. Freighter will prompt you to sign the transaction. 
+   - Once confirmed on-chain, the status changes to `ACTIVE` and the funds are locked in the smart contract.
+5. **Step C: Move-out Splitting Proposals (Tenant & Landlord)**
+   - When the lease ends, either party can propose how to split the deposit.
+   - Switch accounts in Freighter to act as the Landlord, load the escrow, and use the slider to propose a refund split.
+   - Switch accounts back to the Tenant to propose a match.
+   - Once both splits match, the funds are instantly released on-chain and sent to both parties.
+6. **Step D: Arbitration (Dispute Backstop)**
+   - If agreement cannot be reached, the Tenant or Landlord can fill in a reason and click **Declare Dispute**.
+   - The status updates to `DISPUTED`.
+   - Switch Freighter accounts to the **Arbitrator** (Account 3). The arbitrator interface will appear under the Manage tab.
+   - Set the final split slider and click **Resolve Dispute** to release the funds accordingly.
 
 ---
 
@@ -191,13 +293,3 @@ rental-deposit/
 [Live demo link](https://timevault.007575.xyz) *(update with your link when deployed)*
 
 ---
-
-### 📊 Feedback Implementation Review
-Based on initial cohort review, key updates were implemented to ensure the platform operates seamlessly:
-
-| Feedback Category | User Feedback Highlights | Implementation / Action Taken |
-| :--- | :--- | :--- |
-| **UX Flow** | Multi-party signature coordination in browsers was too error-prone. | **Sequential Matching Proposal**: Redesigned the smart contract to allow sequential proposals. Contract automatically releases only when splits match. |
-| **State Stability** | Need checks to avoid double funding and unauthorized dispute resolution. | **Failsafe validations**: Implemented strict `is_funded` states and authorization guards in the Rust contract logic. |
-| **Technical telemetry** | Numbers and hashes should stand out from regular prose. | **Monospace Formatting**: Re-styled all numbers, balances, contract addresses, and wallet hashes in a clean monospace font (`Fira Code`). |
-| **Notification Trail** | Needed a way to inspect the off-chain coordinate loop. | **Logs trails**: Implemented an Express notification log displaying mocked SMS/Email legal updates to landlords. |
