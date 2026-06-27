@@ -135,12 +135,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Wallet Helper Functions
 async function initWallet() {
-  const connected = await isConnected();
-  if (connected) {
+  const connectedResult = await isConnected();
+  if (connectedResult && connectedResult.isConnected) {
     try {
-      const address = await requestAccess();
-      if (address) {
-        setConnectedWallet(address);
+      const accessResult = await requestAccess();
+      if (accessResult && accessResult.address) {
+        setConnectedWallet(accessResult.address);
       }
     } catch (e) {
       console.log('User did not authorize wallet details auto-connect.');
@@ -149,15 +149,18 @@ async function initWallet() {
 }
 
 async function connectWallet() {
-  const connected = await isConnected();
-  if (!connected) {
+  const connectedResult = await isConnected();
+  if (!connectedResult || !connectedResult.isConnected) {
     alert('Please install the Freighter wallet extension to use this application.');
     return;
   }
   try {
-    const address = await requestAccess();
-    if (address) {
-      setConnectedWallet(address);
+    const accessResult = await requestAccess();
+    if (accessResult && accessResult.error) {
+      throw new Error(accessResult.error);
+    }
+    if (accessResult && accessResult.address) {
+      setConnectedWallet(accessResult.address);
     }
   } catch (err) {
     console.error('Wallet connection rejected:', err);
@@ -327,8 +330,11 @@ async function executeTx(contractId, method, args = []) {
   tx = await rpcServer.prepareTransaction(tx);
 
   // Sign with Freighter
-  const signedXdr = await signTransaction(tx.toXDR(), { network: 'TESTNET' });
-  const signedTx = TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE);
+  const signResult = await signTransaction(tx.toXDR(), { network: 'TESTNET' });
+  if (signResult.error) {
+    throw new Error(`Signing rejected or failed: ${signResult.error}`);
+  }
+  const signedTx = TransactionBuilder.fromXDR(signResult.signedTxXdr, NETWORK_PASSPHRASE);
 
   // Send
   const submitResult = await rpcServer.sendTransaction(signedTx);
