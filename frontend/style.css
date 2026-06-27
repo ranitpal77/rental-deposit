@@ -234,16 +234,10 @@ body {
   gap: 0.5rem;
 }
 
-.form-grid {
+.form-grid, .form-grid-stack {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
-}
-
-@media (max-width: 600px) {
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 label {
@@ -798,10 +792,11 @@ input:focus, textarea:focus, select:focus {
     padding: 0 0.75rem 2.5rem 0.75rem;
   }
   .navbar {
-    flex-direction: column;
-    gap: 0.75rem;
-    border-radius: 16px;
-    padding: 0.85rem 1.25rem;
+    flex-direction: row; /* Keep logo and connect button on the same line */
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 30px;
+    padding: 0.5rem 1rem;
     width: calc(100% - 1.5rem);
     margin: 1rem auto;
   }
@@ -809,16 +804,19 @@ input:focus, textarea:focus, select:focus {
     display: none;
   }
   .navbar-actions {
-    width: 100%;
-    display: flex;
-    justify-content: center;
+    width: auto;
   }
   .wallet-info {
-    width: 100%;
-    justify-content: space-between;
+    width: auto;
+    gap: 0.5rem;
+    padding: 0.2rem 0.2rem 0.2rem 0.75rem;
+    border-radius: 20px;
+  }
+  .wallet-info span {
+    font-size: 0.75rem;
   }
   .logo-text {
-    font-size: 1.15rem;
+    font-size: 1.05rem;
   }
   .card {
     padding: 1.25rem;
@@ -828,17 +826,46 @@ input:focus, textarea:focus, select:focus {
   .section-title {
     font-size: 1.25rem;
   }
+  .hero-title {
+    font-size: 2rem;
+  }
   .tab-control {
     border-radius: 24px;
     padding: 0.25rem;
     margin-bottom: 1.25rem;
+    max-width: 380px;
+    margin-left: auto;
+    margin-right: auto;
   }
   .tab-btn {
-    font-size: 0.8rem;
-    padding: 0.6rem;
+    font-size: 0.75rem;
+    padding: 0.5rem;
     border-radius: 20px;
   }
   
+  /* Stacking public keys while leaving shorter inputs side-by-side */
+  .form-grid-stack {
+    grid-template-columns: 1fr;
+  }
+  
+  /* Compact layout rules for mobile forms */
+  .form-group {
+    margin-bottom: 1rem;
+  }
+  #input-desc {
+    height: 100px;
+    min-height: 100px;
+  }
+  
+  /* Stack search items (like input and loaded buttons) */
+  .search-box {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .search-box button {
+    width: 100%;
+  }
+
   /* Stacking critical grids for mobile layouts under 600px */
   .transfer-visualizer {
     grid-template-columns: 1fr;
@@ -874,7 +901,10 @@ input:focus, textarea:focus, select:focus {
   }
   .navbar {
     width: calc(100% - 1rem);
-    padding: 0.75rem 1rem;
+    padding: 0.5rem 0.75rem;
+  }
+  .logo-text {
+    font-size: 0.95rem;
   }
   .card {
     padding: 1rem;
@@ -882,5 +912,13 @@ input:focus, textarea:focus, select:focus {
   }
   .hero-title {
     font-size: 1.75rem;
+  }
+  .tab-btn {
+    font-size: 0.7rem;
+    padding: 0.4rem;
+  }
+  .tab-control {
+    margin-bottom: 1rem;
+    padding: 0.2rem;
   }
 }
