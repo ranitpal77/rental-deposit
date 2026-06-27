@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DEPOSHIELD // Trustless Security Deposit Escrow</title>
+  <title>DEPOSHIELD - Trustless Security Deposit Escrow</title>
   <meta name="description"
     content="A decentralized, trustless security deposit escrow built on Stellar and Soroban. Safe, secure, and neutral.">
 
@@ -267,6 +267,23 @@
               <span class="log-time">[17:30:10]</span>
               <span class="log-label landlord">TO: Sarah Jenkins (Landlord)</span>
               <span class="log-msg">Welcome to Deposhield! Alex Mercer registered an active lease.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Connected Wallet Card -->
+        <div class="card shadow-surface hidden" id="wallet-balance-card">
+          <h2 class="section-title">CONNECTED WALLET STATUS</h2>
+          <p class="section-desc">Details and real-time balance of the active Freighter wallet account.</p>
+
+          <div class="escrow-stats" style="margin-bottom: 0;">
+            <div class="stat-item">
+              <span class="stat-label">ACCOUNT ADDRESS</span>
+              <span id="wallet-balance-address" class="address-mono stat-value text-truncate">--</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">NATIVE XLM BALANCE</span>
+              <span id="wallet-balance-val" class="address-mono stat-value">-- XLM</span>
             </div>
           </div>
         </div>

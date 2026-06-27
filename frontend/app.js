@@ -29,6 +29,10 @@ const walletInfo = document.getElementById('wallet-info');
 const walletAddress = document.getElementById('wallet-address');
 const btnDisconnect = document.getElementById('btn-disconnect');
 
+const walletBalanceCard = document.getElementById('wallet-balance-card');
+const walletBalanceAddress = document.getElementById('wallet-balance-address');
+const walletBalanceVal = document.getElementById('wallet-balance-val');
+
 const tabCreate = document.getElementById('tab-create');
 const tabManage = document.getElementById('tab-manage');
 const panelCreate = document.getElementById('panel-create');
@@ -84,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
   pollNotifications();
   setInterval(pollNotifications, 5000);
   setInterval(loadDashboardEscrows, 8000);
+  setInterval(updateWalletBalance, 10000);
 
   // Tabs
   tabCreate.addEventListener('click', () => {
@@ -173,6 +178,12 @@ function setConnectedWallet(address) {
   walletAddress.textContent = `${address.slice(0, 6)}...${address.slice(-6)}`;
   walletInfo.classList.remove('hidden');
   btnConnect.classList.add('hidden');
+  
+  if (walletBalanceCard) {
+    walletBalanceCard.classList.remove('hidden');
+    walletBalanceAddress.textContent = `${address.slice(0, 8)}...${address.slice(-8)}`;
+  }
+  updateWalletBalance();
   console.log('Wallet connected:', address);
 }
 
@@ -180,7 +191,38 @@ function disconnectWallet() {
   userAddress = null;
   walletInfo.classList.add('hidden');
   btnConnect.classList.remove('hidden');
+  
+  if (walletBalanceCard) {
+    walletBalanceCard.classList.add('hidden');
+    walletBalanceAddress.textContent = '--';
+    walletBalanceVal.textContent = '-- XLM';
+  }
   console.log('Wallet disconnected');
+}
+
+async function updateWalletBalance() {
+  if (!userAddress) {
+    if (walletBalanceCard) walletBalanceCard.classList.add('hidden');
+    return;
+  }
+  try {
+    const res = await fetch(`https://horizon-testnet.stellar.org/accounts/${userAddress}`);
+    if (res.status === 404) {
+      walletBalanceVal.textContent = '0.00 XLM';
+      return;
+    }
+    const data = await res.json();
+    const native = data.balances.find(b => b.asset_type === 'native');
+    if (native) {
+      const amount = parseFloat(native.balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      walletBalanceVal.textContent = `${amount} XLM`;
+    } else {
+      walletBalanceVal.textContent = '0.00 XLM';
+    }
+  } catch (err) {
+    console.error('Failed to fetch wallet balance:', err);
+    walletBalanceVal.textContent = 'Error loading';
+  }
 }
 
 // REST Backend Actions
@@ -434,6 +476,7 @@ async function handleCreateEscrow(e) {
     formCreate.reset();
     loadDashboardEscrows();
     loadEscrow(contractAddress);
+    updateWalletBalance();
   } catch (err) {
     console.error('Escrow initialization failed:', err);
     alert(`Failed to initialize escrow: ${err.message}`);
@@ -579,6 +622,7 @@ async function fundEscrow() {
     alert('Escrow funded successfully on-chain! Funds locked in smart contract.');
     loadEscrow(activeEscrowAddress);
     loadDashboardEscrows();
+    updateWalletBalance();
   } catch (err) {
     console.error('Funding failed:', err);
     alert(`Funding transaction failed: ${err.message}`);
@@ -631,6 +675,7 @@ async function proposeSplit() {
 
     loadEscrow(activeEscrowAddress);
     loadDashboardEscrows();
+    updateWalletBalance();
   } catch (err) {
     console.error('Proposal split failed:', err);
     alert(`Transaction failed: ${err.message}`);
@@ -705,6 +750,7 @@ async function resolveDispute() {
     alert('Dispute resolved by arbitrator. Funds distributed!');
     loadEscrow(activeEscrowAddress);
     loadDashboardEscrows();
+    updateWalletBalance();
   } catch (err) {
     console.error('Resolution failed:', err);
     alert(`Resolution transaction failed: ${err.message}`);
