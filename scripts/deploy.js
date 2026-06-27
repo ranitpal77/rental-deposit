@@ -14,7 +14,13 @@ try {
   execSync('stellar contract build', { cwd: contractDir, stdio: 'inherit' });
   console.log('\n[2/3] Build completed successfully.');
 
-  let wasmPath = path.join(contractDir, 'target', 'wasm32v1-none', 'release', 'escrow_contract.wasm');
+  let wasmPath = path.join(contractDir, 'target', 'wasm32v1-none', 'release', 'escrow.wasm');
+  if (!fs.existsSync(wasmPath)) {
+    wasmPath = path.join(contractDir, 'target', 'wasm32v1-none', 'release', 'escrow_contract.wasm');
+  }
+  if (!fs.existsSync(wasmPath)) {
+    wasmPath = path.join(contractDir, 'target', 'wasm32-unknown-unknown', 'release', 'escrow.wasm');
+  }
   if (!fs.existsSync(wasmPath)) {
     wasmPath = path.join(contractDir, 'target', 'wasm32-unknown-unknown', 'release', 'escrow_contract.wasm');
   }
