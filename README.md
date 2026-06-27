@@ -45,18 +45,24 @@ By leveraging Stellar's protocol-level primitives and Soroban's smart contractin
 `CALSOH3GT4ZC4TSQRMMSJFDXGHUJDIAMM6HE52APRQECHI3OC7PCGURI`
 
 ## 🧾 Transaction Hash
-`a66bd1e36397d2b91e7f31edbc3856f492fb08896b7ad71434da8aac51463364`
+`13608c27f7130e4a162ca3547f5ca17e1ecdae31d07c4eb66b50a529c6eb336d`
 
 ---
 
+### 📸 Wallet Connected State 
+![Wallet Connected](./assets/Wallet-connected-state.png)
+
+### 📸 Wallet Balance
+![Wallet Balance](./assets/Balance-displayed.png)
+
 ### 📸 Transaction Screenshot (Successful Testnet Transaction)
-![Transaction Screenshot](./screenshots/Transaction-Screenshot-01.png)
+![Transaction Screenshot](./assets/Successful-testnet-transaction.png)
 
 ### 📸 Deployed Smart Contract Screenshot
-![Deployed Contract](./screenshots/Deployed-SmartContract-Screenshot.png)
+![Deployed Contract](./assets/deployed-contract.png)
 
 ### 📸 UI Screenshot
-![UI Screenshot](./screenshots/UI-Screenshot-01.png)
+![UI Screenshot](./screenshots/UI.png)
 
 ### 📸 Mobile Responsive View
 ![Mobile Responsive View](./screenshots/Mobile-UI-Screenshot-01.png)
@@ -290,6 +296,6 @@ rental-deposit/
 ---
 
 ## 🌐 Live Demo
-[Live demo link](https://timevault.007575.xyz) *(update with your link when deployed)*
+[Live demo link](https://deposhield.netlify.app/)
 
 ---
