@@ -775,3 +775,63 @@ input:focus, textarea:focus, select:focus {
   font-weight: 600;
   color: var(--text-secondary);
 }
+
+/* Responsive adjustments for Mobile & Tablets */
+@media (max-width: 768px) {
+  .hero {
+    padding: 2.5rem 0 1.5rem 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .navbar {
+    flex-direction: column;
+    gap: 0.75rem;
+    border-radius: 20px;
+    padding: 1rem;
+    width: calc(100% - 2rem);
+    margin: 1rem auto;
+  }
+  .tagline {
+    display: none;
+  }
+  .navbar-actions {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+  .wallet-info {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .card {
+    padding: 1.5rem;
+    border-radius: 16px;
+  }
+  .container {
+    padding: 0 1rem 3rem 1rem;
+  }
+  .section-title {
+    font-size: 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .transfer-visualizer {
+    grid-template-columns: 1fr;
+    text-align: center;
+    gap: 1rem;
+    padding: 1rem;
+  }
+  .visual-divider {
+    transform: rotate(90deg);
+  }
+  .escrow-stats {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  .tab-btn {
+    font-size: 0.75rem;
+    padding: 0.6rem;
+  }
+}
