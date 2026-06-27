@@ -192,19 +192,6 @@ rental-deposit/
 
 ---
 
-## 📝 Level 5 Feedbacks & Improvement Section
-
-### 👥 User Feedback Wallets
-| User | Wallet Address |
-| :--- | :--- |
-| User 01 | `GBVGGKESL3MSWIQB6F64HKJKDRKNB3IHFJQT6AK7YOWPZDKPRFL4XMXS` |
-| User 02 | `GA6XN7NQ3RYRBR44KEJOP67ED4LTTHKEOLFQNE4YHX6P2AUUHRTBVU7F` |
-| User 03 | `GCMVKGLB7TSOU5E5354ALZHUFKXYSKRDB5XWTNWV36DSTBFZUXXQ7VDG` |
-| User 04 | `GCGCJDHNSBVN7ILWV4M636O7ZT3FPIHVPD2IC5SBBTMQWRD5GJ4M6L36` |
-| User 05 | `GAKRKYDMLFMXDYJAD3VYKDFYZGPACZZ4GDCAG5DWQSLQ5WQIZK6KZ4AD` |
-
----
-
 ### 📊 Feedback Implementation Review
 Based on initial cohort review, key updates were implemented to ensure the platform operates seamlessly:
 
