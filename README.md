@@ -62,7 +62,7 @@ By leveraging Stellar's protocol-level primitives and Soroban's smart contractin
 ![Deployed Contract](./assets/deployed-contract.png)
 
 ### 📸 UI Screenshot
-![UI Screenshot](./screenshots/UI.png)
+![UI Screenshot](./assets/UI.png)
 
 ### 📸 Mobile Responsive View
 ![Mobile Responsive View](./screenshots/Mobile-UI-Screenshot-01.png)
