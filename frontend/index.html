@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DEPOSHIELD // Trustless Security Deposit Escrow</title>
+  <meta name="description" content="A decentralized, trustless security deposit escrow built on Stellar and Soroban. Safe, secure, and neutral.">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;900&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+  
+  <!-- CSS -->
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+  <!-- Background Grid Texture -->
+  <div class="grid-background"></div>
+
+  <!-- Floating Nav Bar -->
+  <nav class="navbar" id="navbar">
+    <div class="navbar-brand">
+      <span class="logo-text">DEPOSHIELD //</span>
+      <span class="tagline">STELLAR ESCROW</span>
+    </div>
+    <div class="navbar-actions">
+      <button id="btn-connect" class="btn btn-primary pill-btn">CONNECT WALLET</button>
+      <div id="wallet-info" class="wallet-info hidden">
+        <span id="wallet-address" class="address-mono">G...</span>
+        <button id="btn-disconnect" class="btn btn-secondary btn-icon-only">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <!-- Hero Section -->
+    <header class="hero">
+      <div class="hero-content">
+        <span class="badge">SOROBAN SMART CONTRACT PROTOCOL</span>
+        <h1 class="hero-title">TRUSTLESS SECURITY DEPOSITS</h1>
+        <p class="hero-subtitle">
+          Eliminate landlord-tenant friction. Lock rental deposits on-chain with neutral, automated rules. Release funds mutually or resolve disputes instantly via decentralized arbitration.
+        </p>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="workspace-grid">
+      <!-- Left Panel: Create / Interact -->
+      <section class="panel-left">
+        <!-- Tab Controls -->
+        <div class="tab-control">
+          <button id="tab-create" class="tab-btn active">CREATE ESCROW</button>
+          <button id="tab-manage" class="tab-btn">MANAGE ESCROW</button>
+        </div>
+
+        <!-- Create Escrow Card -->
+        <div id="panel-create" class="card shadow-surface">
+          <h2 class="section-title">INITIALIZE NEW LEASE</h2>
+          <p class="section-desc">Set up a secure escrow contract instance. The tenant will fund it, and release conditions will lock it.</p>
+          
+          <form id="form-create-escrow" class="form-container">
+            <div class="form-group">
+              <label for="input-title">LEASE TITLE</label>
+              <input type="text" id="input-title" placeholder="e.g., APARTMENT 4B - GREENVIEW HEIGHTS" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="input-desc">LEASE DESCRIPTION</label>
+              <textarea id="input-desc" placeholder="Detail move-in dates, terms, or conditions..." rows="2"></textarea>
+            </div>
+            
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="input-landlord">LANDLORD PUBLIC KEY</label>
+                <input type="text" id="input-landlord" class="address-mono" placeholder="GB..." required>
+              </div>
+              
+              <div class="form-group">
+                <label for="input-arbitrator">ARBITRATOR PUBLIC KEY</label>
+                <input type="text" id="input-arbitrator" class="address-mono" placeholder="GA..." required>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="input-amount">DEPOSIT AMOUNT</label>
+                <input type="number" id="input-amount" placeholder="e.g., 500" required min="1">
+              </div>
+              
+              <div class="form-group">
+                <label for="select-token">TOKEN ASSET</label>
+                <select id="select-token">
+                  <option value="native">XLM (Native Stellar)</option>
+                  <option value="usdc">USDC (Stellar Anchor)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="input-tenant-name">TENANT NAME (FOR NOTIFICATION)</label>
+              <input type="text" id="input-tenant-name" placeholder="Your Name" required>
+            </div>
+            <div class="form-group">
+              <label for="input-landlord-name">LANDLORD NAME (FOR NOTIFICATION)</label>
+              <input type="text" id="input-landlord-name" placeholder="Landlord Name" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-full pill-btn" id="btn-submit-create">
+              INITIALIZE ESCROW ON-CHAIN
+            </button>
+          </form>
+        </div>
+
+        <!-- Manage / Interact Card -->
+        <div id="panel-manage" class="card shadow-surface hidden">
+          <h2 class="section-title">ACTIVE INTERACTION</h2>
+          <p class="section-desc">Search and load an escrow contract by its contract address to perform actions.</p>
+          
+          <div class="search-box">
+            <input type="text" id="input-search-address" class="address-mono" placeholder="Enter Soroban Contract ID...">
+            <button id="btn-search-escrow" class="btn btn-secondary pill-btn">LOAD</button>
+          </div>
+
+          <div id="active-escrow-details" class="hidden">
+            <!-- Loaded Escrow Summary -->
+            <div class="loaded-escrow-header">
+              <h3 id="detail-title" class="escrow-title-text">APARTMENT 4B - GREENVIEW HEIGHTS</h3>
+              <span id="detail-status-badge" class="badge-status status-active">ACTIVE</span>
+            </div>
+            <p id="detail-desc" class="escrow-desc-text">Security deposit for lease contract active from July 2026.</p>
+
+            <!-- Dual Columns from/to -->
+            <div class="transfer-visualizer">
+              <div class="visual-col">
+                <span class="visual-label">TENANT</span>
+                <span id="detail-tenant" class="address-mono text-truncate">GD7H...PWTN</span>
+                <span id="detail-tenant-name" class="visual-subtext">Alex Mercer</span>
+              </div>
+              <div class="visual-divider">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"></path></svg>
+              </div>
+              <div class="visual-col">
+                <span class="visual-label">LANDLORD</span>
+                <span id="detail-landlord" class="address-mono text-truncate">GB54...LORD</span>
+                <span id="detail-landlord-name" class="visual-subtext">Sarah Jenkins</span>
+              </div>
+            </div>
+
+            <div class="escrow-stats">
+              <div class="stat-item">
+                <span class="stat-label">TOTAL ESCROW AMOUNT</span>
+                <span id="detail-amount" class="address-mono stat-value">800 XLM</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">CONTRACT ADDRESS</span>
+                <span id="detail-contract-address" class="address-mono stat-value text-truncate">CD3W...QPL</span>
+              </div>
+            </div>
+
+            <!-- Action Controls based on Role/State -->
+            <div class="action-section" id="actions-unfunded">
+              <div class="info-banner warning">
+                <span>Escrow initialized but funds are not deposited yet.</span>
+              </div>
+              <button id="btn-fund-escrow" class="btn btn-primary btn-full pill-btn">FUND ESCROW NOW (DEPOSIT)</button>
+            </div>
+
+            <div class="action-section hidden" id="actions-active">
+              <h4 class="action-heading">PROPOSE RELEASE SPLIT</h4>
+              <p class="action-desc">Negotiate the refund. Enter the split. If landlord and tenant splits match, release executes automatically.</p>
+              
+              <div class="slider-container">
+                <div class="slider-labels">
+                  <span>TO TENANT: <strong id="lbl-split-tenant" class="address-mono">400 XLM</strong></span>
+                  <span>TO LANDLORD: <strong id="lbl-split-landlord" class="address-mono">400 XLM</strong></span>
+                </div>
+                <input type="range" id="range-split" min="0" max="800" value="400" class="split-slider">
+              </div>
+              
+              <button id="btn-propose-split" class="btn btn-primary btn-full pill-btn">SUBMIT RELEASE PROPOSAL</button>
+
+              <div class="dispute-trigger">
+                <p class="action-desc">Disagreements? Initiate a formal dispute to request arbitrator resolution.</p>
+                <div class="search-box">
+                  <input type="text" id="input-dispute-reason" placeholder="State reason for dispute (e.g. damages)...">
+                  <button id="btn-dispute" class="btn btn-danger-outline pill-btn">RAISE DISPUTE</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="action-section hidden" id="actions-disputed">
+              <div class="info-banner error">
+                <span>THIS ESCROW IS CURRENTLY DISPUTED</span>
+                <p id="lbl-dispute-reason" class="dispute-reason-txt">Reason: Landlord claims water damages.</p>
+              </div>
+              
+              <div id="arbitrator-controls" class="hidden">
+                <h4 class="action-heading">ARBITRATOR TIE-BREAKER DECISION</h4>
+                <p class="action-desc">You are the registered arbitrator. Decide final distribution split.</p>
+                <div class="slider-container">
+                  <div class="slider-labels">
+                    <span>TO TENANT: <strong id="lbl-arb-tenant" class="address-mono">400 XLM</strong></span>
+                    <span>TO LANDLORD: <strong id="lbl-arb-landlord" class="address-mono">400 XLM</strong></span>
+                  </div>
+                  <input type="range" id="range-arb" min="0" max="800" value="400" class="split-slider">
+                </div>
+                <button id="btn-resolve-dispute" class="btn btn-danger btn-full pill-btn">EXECUTE ARBITRATOR RESOLUTION</button>
+              </div>
+              
+              <div id="arbitrator-waiting" class="non-arbitrator-msg">
+                Waiting for Delhi Housing Authority (Arbitrator) to review evidence and submit split.
+              </div>
+            </div>
+
+            <div class="action-section hidden" id="actions-released">
+              <div class="info-banner success">
+                <span>ESCROW RELEASED & RESOLVED SUCCESSFULY</span>
+                <p id="lbl-release-info">Funds sent back to accounts. Check history below.</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Panel: Dashboard & Logs -->
+      <section class="panel-right">
+        <!-- Live Escrow Dashboard -->
+        <div class="card shadow-surface">
+          <h2 class="section-title">ACTIVE AGENTS / PLATFORM DASHBOARD</h2>
+          <p class="section-desc">Current escrows tracked by the platform backend coordinator.</p>
+          
+          <div class="escrow-list" id="dashboard-escrow-list">
+            <!-- JS Populated list -->
+            <div class="dashboard-placeholder">Loading active escrows...</div>
+          </div>
+        </div>
+
+        <!-- Simulated Notifications Pane -->
+        <div class="card shadow-surface">
+          <h2 class="section-title">SIMULATED NOTIFICATION TRAIL</h2>
+          <p class="section-desc">Mocked SMS & Email notifications sent to landlords and tenants (legal trail).</p>
+          
+          <div class="notification-trail" id="notification-logs">
+            <div class="log-entry">
+              <span class="log-time">[17:30:10]</span>
+              <span class="log-label landlord">TO: Sarah Jenkins (Landlord)</span>
+              <span class="log-msg">Welcome to Deposhield! Alex Mercer registered an active lease.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <span>DEPOSHIELD V1.0 // POWERED BY STELLAR SOROBAN SMART CONTRACT PROTOCOL</span>
+      <div class="status-indicator">
+        <span class="status-dot green"></span>
+        <span class="status-text font-mono">TESTNET ONLINE</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

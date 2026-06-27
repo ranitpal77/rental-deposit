@@ -1,70 +1,76 @@
-# Getting Started with Create React App
+# DEPOSHIELD // Trustless Security Deposit Escrow
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Deposhield is a trustless, decentralized security deposit escrow platform built on the Stellar network using Soroban smart contracts. It eliminates the traditional trust issues in landlord-tenant relationships by locking deposit funds on-chain under neutral, programmatically-enforced release rules.
 
-## Available Scripts
+---
 
-In the project directory, you can run:
+## Architecture Overview
 
-### `npm start`
+1. **Soroban Smart Contract (`contracts/escrow/`)**:
+   - Manages initialization, lockups, sequential split proposals, disputes, and resolution.
+   - Designed to run independently per rental agreement, meaning each escrow is a separate contract instance for maximum safety and scalability.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+2. **Frontend (`frontend/`)**:
+   - Built with Vanilla HTML, CSS, and JS using Vite.
+   - Integrates with the Freighter wallet browser extension for on-chain contract interaction.
+   - Supports creating, funding, proposing matching split releases, raising disputes, and executing resolutions.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+3. **Backend Coordination Service (`backend/`)**:
+   - A lightweight Node/Express server.
+   - Coordinates off-chain metadata (e.g. lease descriptions, names) and logs simulated email/SMS notifications (e.g. "Tenant has funded the deposit") for active users.
 
-### `npm test`
+4. **Automation Scripts (`scripts/`)**:
+   - Helper scripts for compiling the Soroban contract.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+---
 
-### `npm run build`
+## How it Works (Product Lifecycle)
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+1. **Deployment**: The contract is deployed to Stellar Testnet (via CLI or build script).
+2. **Initialization**: The tenant inputs the contract address, the landlord and arbitrator addresses, the token (XLM), and the deposit amount. This calls `initialize()` on the contract and registers metadata on the backend.
+3. **Funding**: The tenant transfers the deposit to the contract using `fund()`. Both parties are notified.
+4. **Mutual Release**: At move-out, both parties propose split amounts. When their proposed splits match on-chain, the contract transfers the funds.
+5. **Dispute Resolution**: If they disagree, either party can raise a dispute. The neutral arbitrator (दिल्ली Housing Authority / DAO / Agency) can resolve the dispute on-chain by submitting the final split distribution.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+---
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Running the Application
 
-### `npm run eject`
+### 1. Build and Test the Smart Contract
+Verify the smart contract logic compiles and passes all unit tests:
+```bash
+# Compile and run Rust tests
+cd contracts/escrow
+cargo test
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Build the contract WASM:
+```bash
+# From workspace root
+node scripts/deploy.js
+```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### 2. Start the Backend Coordination Server
+```bash
+cd backend
+npm install
+npm start
+# Runs on http://localhost:5000
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### 3. Run the Frontend Web Dashboard
+Ensure you have the Freighter wallet extension installed in your browser.
+```bash
+cd frontend
+npm install
+npm run dev
+# Runs on http://localhost:3000
+```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+---
 
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## Core Technologies
+- **Smart Contract**: Rust & Soroban SDK (v25)
+- **Frontend**: Vanilla HTML5, Vanilla CSS3, Javascript, Vite
+- **Wallet Integration**: `@stellar/freighter-api` & `@stellar/stellar-sdk`
+- **Backend API**: Node.js & Express
