@@ -23,6 +23,39 @@ let userAddress = null;
 let activeEscrowAddress = null;
 let activeEscrowDetails = null;
 
+// Local Storage database helpers to support 100% serverless frontend-only hosting
+function getLocalEscrows() {
+  const data = localStorage.getItem('deposhield_escrows');
+  if (!data) {
+    const defaultData = [
+      {
+        address: 'CALSOH3GT4ZC4TSQRMMSJFDXGHUJDIAMM6HE52APRQECHI3OC7PCGURI',
+        tenant: 'GD7HBP77O76P6RYMFLZ26J6R74WSHU6DCOFHRFDFYJZ4TZZ2J4E2PWTN',
+        tenantName: 'Alex Mercer (Tenant)',
+        landlord: 'GB543SZG2HMLW6WJ56TCR5UHQEHLCOHRFDFYJZ4TZZ2J4E2PLANDLORD',
+        landlordName: 'Sarah Jenkins (Landlord)',
+        arbitrator: 'GAARBITRATOR77O76P6RYMFLZ26J6R74WSHU6DCOFHRFDFYJZ4TZZ2JARBI',
+        arbitratorName: 'Metropolitan Housing Authority',
+        amount: '800 XLM',
+        status: 'Active',
+        title: 'Apartment 4B - Greenview Heights',
+        description: 'Security deposit for lease contract active from July 2026.',
+        history: [
+          { timestamp: new Date(Date.now() - 3600000 * 24).toISOString(), event: 'Escrow Created on-chain' },
+          { timestamp: new Date(Date.now() - 3600000 * 23).toISOString(), event: 'Escrow Funded by Tenant (800 XLM)' }
+        ]
+      }
+    ];
+    localStorage.setItem('deposhield_escrows', JSON.stringify(defaultData));
+    return defaultData;
+  }
+  return JSON.parse(data);
+}
+
+function saveLocalEscrows(escrows) {
+  localStorage.setItem('deposhield_escrows', JSON.stringify(escrows));
+}
+
 // UI Elements
 const btnConnect = document.getElementById('btn-connect');
 const walletInfo = document.getElementById('wallet-info');
@@ -225,11 +258,10 @@ async function updateWalletBalance() {
   }
 }
 
-// REST Backend Actions
+// Local Storage Actions
 async function loadDashboardEscrows() {
   try {
-    const res = await fetch(`${BACKEND_URL}/api/escrows`);
-    const escrows = await res.json();
+    const escrows = getLocalEscrows();
     
     if (escrows.length === 0) {
       dashboardEscrowList.innerHTML = `<div class="dashboard-placeholder">No active escrows registered.</div>`;
@@ -276,14 +308,14 @@ function getStatusBadgeClass(status) {
 
 async function pollNotifications() {
   try {
-    const res = await fetch(`${BACKEND_URL}/api/escrows`);
-    const escrows = await res.json();
+    const escrows = getLocalEscrows();
     
     // Aggregate history logs as notifications
     const allLogs = [];
     escrows.forEach(e => {
       e.history.forEach(h => {
         allLogs.push({
+          timestamp: h.timestamp,
           time: new Date(h.timestamp).toLocaleTimeString(),
           title: e.title,
           event: h.event,
@@ -293,7 +325,7 @@ async function pollNotifications() {
     });
 
     // Sort by timestamp desc
-    allLogs.sort((a, b) => new Date(b.time) - new Date(a.time));
+    allLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
     notificationLogs.innerHTML = allLogs.slice(0, 10).map(log => {
       let recipient = 'Tenant & Landlord';
@@ -454,25 +486,28 @@ async function handleCreateEscrow(e) {
 
     await executeTx(contractAddress, 'initialize', args);
 
-    // Call REST backend to store metadata
-    await fetch(`${BACKEND_URL}/api/escrows`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        address: contractAddress,
-        tenant: userAddress,
-        tenantName,
-        landlord,
-        landlordName,
-        arbitrator,
-        arbitratorName: 'Delhi Housing Authority',
-        amount: `${amount} XLM`,
-        title,
-        description: desc
-      })
-    });
+    // Save metadata locally
+    const escrows = getLocalEscrows();
+    const newEscrow = {
+      address: contractAddress,
+      tenant: userAddress,
+      tenantName: tenantName || 'Tenant',
+      landlord,
+      landlordName: landlordName || 'Landlord',
+      arbitrator,
+      arbitratorName: 'Delhi Housing Authority',
+      amount: `${amount} XLM`,
+      status: 'Created',
+      title,
+      description: desc,
+      history: [
+        { timestamp: new Date().toISOString(), event: 'Escrow Created & Initialized' }
+      ]
+    };
+    escrows.push(newEscrow);
+    saveLocalEscrows(escrows);
 
-    alert('Escrow initialized successfully on-chain and registered on backend!');
+    alert('Escrow initialized successfully on-chain and registered locally!');
     formCreate.reset();
     loadDashboardEscrows();
     loadEscrow(contractAddress);
@@ -491,17 +526,17 @@ async function loadEscrow(address) {
   activeEscrowDetailsPanel.classList.add('hidden');
 
   try {
-    // 1. Fetch metadata from backend
-    const metaRes = await fetch(`${BACKEND_URL}/api/escrows/${address}`);
-    let metadata = {
-      tenantName: 'Tenant',
-      landlordName: 'Landlord',
-      arbitratorName: 'Arbitrator',
-      title: 'Rental Escrow',
-      description: 'Security deposit'
-    };
-    if (metaRes.ok) {
-      metadata = await metaRes.json();
+    // 1. Fetch metadata from local storage
+    const escrows = getLocalEscrows();
+    let metadata = escrows.find(e => e.address === address);
+    if (!metadata) {
+      metadata = {
+        tenantName: 'Tenant',
+        landlordName: 'Landlord',
+        arbitratorName: 'Arbitrator',
+        title: 'Rental Escrow',
+        description: 'Security deposit'
+      };
     }
 
     // 2. Fetch state on-chain via simulation
@@ -616,8 +651,14 @@ async function fundEscrow() {
     // Call contract.fund()
     await executeTx(activeEscrowAddress, 'fund');
 
-    // Notify backend
-    await fetch(`${BACKEND_URL}/api/escrows/${activeEscrowAddress}/fund`, { method: 'POST' });
+    // Update local database status
+    const escrows = getLocalEscrows();
+    const escrow = escrows.find(e => e.address === activeEscrowAddress);
+    if (escrow) {
+      escrow.status = 'Active';
+      escrow.history.push({ timestamp: new Date().toISOString(), event: 'Escrow Funded' });
+      saveLocalEscrows(escrows);
+    }
 
     alert('Escrow funded successfully on-chain! Funds locked in smart contract.');
     loadEscrow(activeEscrowAddress);
@@ -655,22 +696,25 @@ async function proposeSplit() {
     // Get contract status after call to see if it triggered matching split release
     const currentStatus = await simulateCall(activeEscrowAddress, 'get_status');
     
-    if (currentStatus === 3) {
-      // Released
-      await fetch(`${BACKEND_URL}/api/escrows/${activeEscrowAddress}/release`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantAmount, landlordAmount })
-      });
-      alert('Agreement reached! Splits match. Escrow released successfully!');
-    } else {
-      // Split submitted
-      await fetch(`${BACKEND_URL}/api/escrows/${activeEscrowAddress}/propose`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ caller: userAddress, tenantAmount, landlordAmount })
-      });
-      alert(`Split proposal submitted! Waiting for matching proposal from the other party.`);
+    const escrows = getLocalEscrows();
+    const escrow = escrows.find(e => e.address === activeEscrowAddress);
+    if (escrow) {
+      if (currentStatus === 3) {
+        escrow.status = 'Released';
+        escrow.history.push({ 
+          timestamp: new Date().toISOString(), 
+          event: `Escrow Released! (Tenant: ${tenantAmount} XLM, Landlord: ${landlordAmount} XLM)` 
+        });
+        alert('Agreement reached! Splits match. Escrow released successfully!');
+      } else {
+        const callerRole = userAddress === escrow.tenant ? 'Tenant' : 'Landlord';
+        escrow.history.push({ 
+          timestamp: new Date().toISOString(), 
+          event: `${callerRole} proposed release split: Tenant: ${tenantAmount} XLM, Landlord: ${landlordAmount} XLM` 
+        });
+        alert(`Split proposal submitted! Waiting for matching proposal from the other party.`);
+      }
+      saveLocalEscrows(escrows);
     }
 
     loadEscrow(activeEscrowAddress);
@@ -702,12 +746,18 @@ async function declareDispute() {
 
     await executeTx(activeEscrowAddress, 'dispute', args);
 
-    // Notify backend
-    await fetch(`${BACKEND_URL}/api/escrows/${activeEscrowAddress}/dispute`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ caller: userAddress, reason })
-    });
+    // Update local database status
+    const escrows = getLocalEscrows();
+    const escrow = escrows.find(e => e.address === activeEscrowAddress);
+    if (escrow) {
+      const callerRole = userAddress === escrow.tenant ? 'Tenant' : 'Landlord';
+      escrow.status = 'Disputed';
+      escrow.history.push({ 
+        timestamp: new Date().toISOString(), 
+        event: `Dispute declared by ${callerRole}. Reason: "${reason}"` 
+      });
+      saveLocalEscrows(escrows);
+    }
 
     alert('Dispute successfully declared on-chain. Arbitrator has been notified.');
     inputDisputeReason.value = '';
@@ -740,12 +790,17 @@ async function resolveDispute() {
 
     await executeTx(activeEscrowAddress, 'resolve_dispute', args);
 
-    // Notify backend
-    await fetch(`${BACKEND_URL}/api/escrows/${activeEscrowAddress}/resolve`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tenantAmount, landlordAmount })
-    });
+    // Update local database status
+    const escrows = getLocalEscrows();
+    const escrow = escrows.find(e => e.address === activeEscrowAddress);
+    if (escrow) {
+      escrow.status = 'Released (Disputed)';
+      escrow.history.push({ 
+        timestamp: new Date().toISOString(), 
+        event: `Dispute resolved by Arbitrator! (Tenant: ${tenantAmount} XLM, Landlord: ${landlordAmount} XLM)` 
+      });
+      saveLocalEscrows(escrows);
+    }
 
     alert('Dispute resolved by arbitrator. Funds distributed!');
     loadEscrow(activeEscrowAddress);
