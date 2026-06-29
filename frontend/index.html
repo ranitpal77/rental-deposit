@@ -59,9 +59,9 @@
     </header>
 
     <!-- Main Workspace -->
-    <div class="workspace-grid">
-      <!-- Left Panel: Create / Interact -->
-      <section class="panel-left">
+    <div class="workspace-grid bento-grid">
+      <!-- Card 1: Main Workspace Card -->
+      <div class="bento-card bento-card-workspace" id="bento-workspace-card">
         <!-- Tab Controls -->
         <div class="tab-control">
           <button id="tab-create" class="tab-btn active">CREATE ESCROW</button>
@@ -69,7 +69,7 @@
         </div>
 
         <!-- Create Escrow Card -->
-        <div id="panel-create" class="card shadow-surface">
+        <div id="panel-create" class="workspace-panel">
           <h2 class="section-title">INITIALIZE NEW LEASE</h2>
           <p class="section-desc">Set up a secure escrow contract instance. The tenant will fund it, and release
             conditions will lock it.</p>
@@ -129,7 +129,7 @@
         </div>
 
         <!-- Manage / Interact Card -->
-        <div id="panel-manage" class="card shadow-surface hidden">
+        <div id="panel-manage" class="workspace-panel hidden">
           <h2 class="section-title">ACTIVE INTERACTION</h2>
           <p class="section-desc">Search and load an escrow contract by its contract address to perform actions.</p>
 
@@ -243,52 +243,49 @@
 
           </div>
         </div>
-      </section>
+      </div>
 
-      <!-- Right Panel: Dashboard & Logs -->
-      <section class="panel-right">
-        <!-- Live Escrow Dashboard -->
-        <div class="card shadow-surface">
-          <h2 class="section-title">ACTIVE AGENTS / PLATFORM DASHBOARD</h2>
-          <p class="section-desc">Current escrows tracked by the platform backend coordinator.</p>
+      <!-- Card 2: Connected Wallet Card -->
+      <div class="bento-card bento-card-wallet hidden" id="wallet-balance-card">
+        <h2 class="section-title">CONNECTED WALLET STATUS</h2>
+        <p class="section-desc">Details and real-time balance of the active Freighter wallet account.</p>
 
-          <div class="escrow-list" id="dashboard-escrow-list">
-            <!-- JS Populated list -->
-            <div class="dashboard-placeholder">Loading active escrows...</div>
+        <div class="escrow-stats" style="margin-bottom: 0;">
+          <div class="stat-item">
+            <span class="stat-label">ACCOUNT ADDRESS</span>
+            <span id="wallet-balance-address" class="address-mono stat-value text-truncate">--</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">NATIVE XLM BALANCE</span>
+            <span id="wallet-balance-val" class="address-mono stat-value">-- XLM</span>
           </div>
         </div>
+      </div>
 
-        <!-- Simulated Notifications Pane -->
-        <div class="card shadow-surface">
-          <h2 class="section-title">SIMULATED NOTIFICATION TRAIL</h2>
-          <p class="section-desc">Mocked SMS & Email notifications sent to landlords and tenants (legal trail).</p>
+      <!-- Card 3: Live Escrow Dashboard -->
+      <div class="bento-card bento-card-dashboard">
+        <h2 class="section-title">ACTIVE AGENTS / PLATFORM DASHBOARD</h2>
+        <p class="section-desc">Current escrows tracked by the platform backend coordinator.</p>
 
-          <div class="notification-trail" id="notification-logs">
-            <div class="log-entry">
-              <span class="log-time">[17:30:10]</span>
-              <span class="log-label landlord">TO: Sarah Jenkins (Landlord)</span>
-              <span class="log-msg">Welcome to Deposhield! Alex Mercer registered an active lease.</span>
-            </div>
+        <div class="escrow-list" id="dashboard-escrow-list">
+          <!-- JS Populated list -->
+          <div class="dashboard-placeholder">Loading active escrows...</div>
+        </div>
+      </div>
+
+      <!-- Card 4: Simulated Notifications Pane -->
+      <div class="bento-card bento-card-logs">
+        <h2 class="section-title">SIMULATED NOTIFICATION TRAIL</h2>
+        <p class="section-desc">Mocked SMS & Email notifications sent to landlords and tenants (legal trail).</p>
+
+        <div class="notification-trail" id="notification-logs">
+          <div class="log-entry">
+            <span class="log-time">[17:30:10]</span>
+            <span class="log-label landlord">TO: Sarah Jenkins (Landlord)</span>
+            <span class="log-msg">Welcome to Deposhield! Alex Mercer registered an active lease.</span>
           </div>
         </div>
-
-        <!-- Connected Wallet Card -->
-        <div class="card shadow-surface hidden" id="wallet-balance-card">
-          <h2 class="section-title">CONNECTED WALLET STATUS</h2>
-          <p class="section-desc">Details and real-time balance of the active Freighter wallet account.</p>
-
-          <div class="escrow-stats" style="margin-bottom: 0;">
-            <div class="stat-item">
-              <span class="stat-label">ACCOUNT ADDRESS</span>
-              <span id="wallet-balance-address" class="address-mono stat-value text-truncate">--</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">NATIVE XLM BALANCE</span>
-              <span id="wallet-balance-val" class="address-mono stat-value">-- XLM</span>
-            </div>
-          </div>
-        </div>
-      </section>
+      </div>
     </div>
   </main>
 

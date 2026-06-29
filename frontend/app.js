@@ -809,3 +809,35 @@ async function resolveDispute() {
     btnResolveDispute.textContent = originalText;
   }
 }
+
+// Mobile Overflow Detection Script (Temporarily added for debugging)
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    const targetWidth = 375;
+    const docWidth = document.documentElement.clientWidth;
+    console.log('Document ClientWidth:', docWidth);
+    const elements = document.querySelectorAll('*');
+    const overflowing375 = [];
+    const overflowingDoc = [];
+    elements.forEach(el => {
+      const rect = el.getBoundingClientRect();
+      const info = {
+        tagName: el.tagName,
+        classList: Array.from(el.classList),
+        id: el.id,
+        rectRight: rect.right,
+        offsetWidth: el.offsetWidth,
+        scrollWidth: el.scrollWidth
+      };
+      if (rect.right > targetWidth) {
+        overflowing375.push(info);
+      }
+      if (rect.right > docWidth) {
+        overflowingDoc.push(info);
+      }
+    });
+    console.log('OVERFLOW_375:', JSON.stringify(overflowing375));
+    console.log('OVERFLOW_DOC:', JSON.stringify(overflowingDoc));
+  }, 1000);
+});
+
