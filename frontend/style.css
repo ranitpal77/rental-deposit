@@ -155,7 +155,7 @@ html, body {
 /* Workspace Layout Grid - Bento Grid System */
 .workspace-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.5fr);
   grid-auto-flow: dense;
   gap: 1.5rem;
   margin-top: 2rem;
