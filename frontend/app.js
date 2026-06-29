@@ -506,7 +506,7 @@ async function executeTx(contractId, method, args = []) {
   // Send
   const submitResult = await rpcServer.sendTransaction(signedTx);
   if (submitResult.status === 'ERROR') {
-    throw new Error(`Submit error: ${JSON.stringify(submitResult.errorResultXdr)}`);
+    throw new Error(`Submit error: ${JSON.stringify(submitResult)}`);
   }
 
   // Wait/Poll status
