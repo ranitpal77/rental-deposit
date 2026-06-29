@@ -497,7 +497,7 @@ async function executeTx(contractId, method, args = []) {
   tx = await rpcServer.prepareTransaction(tx);
 
   // Sign with Freighter
-  const signResult = await signTransaction(tx.toXDR(), { network: 'TESTNET' });
+  const signResult = await signTransaction(tx.toXDR(), { networkPassphrase: NETWORK_PASSPHRASE });
   if (signResult.error) {
     throw new Error(`Signing rejected or failed: ${signResult.error}`);
   }
