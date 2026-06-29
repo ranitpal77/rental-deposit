@@ -62,7 +62,7 @@ body.light-theme .mobile-menu {
 }
 
 body.light-theme .grid-background {
-  background-image: radial-gradient(rgba(0, 0, 0, 0.06) 1px, transparent 1px);
+  display: none;
 }
 
 body.light-theme input, 
