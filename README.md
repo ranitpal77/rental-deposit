@@ -34,18 +34,20 @@ By leveraging Stellar's protocol-level primitives and Soroban's smart contractin
 ---
 
 ## 🔗 Deployed Smart Contract Link
-**[View on Stellar Lab](https://lab.stellar.org/r/testnet/contract/CALSOH3GT4ZC4TSQRMMSJFDXGHUJDIAMM6HE52APRQECHI3OC7PCGURI)**
+**[View on Stellar Lab](https://lab.stellar.org/r/testnet/contract/CBETXXIY2B2IYXVYGEYQG2EH3XS4QIZVI47MHPGGMUOXURW2CHU32I7M)**
+
+**[View on Stellar Expert](https://stellar.expert/explorer/testnet/contract/CBETXXIY2B2IYXVYGEYQG2EH3XS4QIZVI47MHPGGMUOXURW2CHU32I7M)**
 
 ---
 
 ## 🏦 Developer Wallet
-`GD7HBP77O76P6RYMFLZ26J6R74WSHU6DCOFHRFDFYJZ4TZZ2J4E2PWTN`
+`GDFLHVAXB37QVIPV7LWLEIAPHQ7TYXG36LXX3CHMBFEQA67GDB44QLPI`
 
 ## 🆔 Deployed Contract ID
-`CALSOH3GT4ZC4TSQRMMSJFDXGHUJDIAMM6HE52APRQECHI3OC7PCGURI`
+`CBETXXIY2B2IYXVYGEYQG2EH3XS4QIZVI47MHPGGMUOXURW2CHU32I7M`
 
 ## 🧾 Transaction Hash
-`13608c27f7130e4a162ca3547f5ca17e1ecdae31d07c4eb66b50a529c6eb336d`
+`96f44ffd47642c2ec2f53ca26207ebf1ee8f4c2ae8a02e4cbd90830cf27037e9`
 
 ---
 
@@ -59,7 +61,7 @@ By leveraging Stellar's protocol-level primitives and Soroban's smart contractin
 ![Transaction Screenshot](./assets/Successful-testnet-transaction.png)
 
 ### 📸 Deployed Smart Contract Screenshot
-![Deployed Contract](./assets/deployed-contract.png)
+![Deployed Contract](./assets/deployed-contract-02.png)
 
 ### 📸 UI Screenshot
 ![UI Screenshot](./assets/UI.png)
