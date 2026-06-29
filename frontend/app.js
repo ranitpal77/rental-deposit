@@ -115,6 +115,7 @@ const dashboardEscrowList = document.getElementById('dashboard-escrow-list');
 const notificationLogs = document.getElementById('notification-logs');
 
 // Page Navigation Router Selectors
+const navbarMenu = document.getElementById('navbar-menu');
 const navWorkspace = document.getElementById('nav-workspace');
 const navDashboard = document.getElementById('nav-dashboard');
 const navDocs = document.getElementById('nav-docs');
@@ -159,6 +160,23 @@ document.addEventListener('DOMContentLoaded', () => {
     navWorkspace.addEventListener('click', () => switchPage('workspace'));
     navDashboard.addEventListener('click', () => switchPage('dashboard'));
     navDocs.addEventListener('click', () => switchPage('docs'));
+  }
+
+  // Mobile Hamburger Toggle
+  const btnHamburger = document.getElementById('btn-hamburger');
+  if (btnHamburger && navbarMenu) {
+    btnHamburger.addEventListener('click', () => {
+      btnHamburger.classList.toggle('open');
+      navbarMenu.classList.toggle('open');
+    });
+
+    // Close menu when clicking a nav-link inside the dropdown
+    document.querySelectorAll('.navbar-menu .nav-link').forEach(link => {
+      link.addEventListener('click', () => {
+        btnHamburger.classList.remove('open');
+        navbarMenu.classList.remove('open');
+      });
+    });
   }
 
   // Tabs
