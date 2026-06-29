@@ -112,6 +112,23 @@ body.light-theme .footer {
   background-color: var(--surface-color-light);
 }
 
+body.light-theme .btn-primary {
+  background-color: var(--text-primary);
+  color: var(--bg-color);
+}
+
+body.light-theme .btn-primary:hover {
+  background-color: var(--text-secondary);
+}
+
+body.light-theme .btn-secondary:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+body.light-theme .nav-link.active:after {
+  background-color: var(--text-primary);
+}
+
 /* Reset */
 * {
   box-sizing: border-box;
