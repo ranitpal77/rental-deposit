@@ -512,6 +512,8 @@ input:focus, textarea:focus, select:focus {
 }
 
 .text-truncate {
+  display: block;
+  width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
