@@ -15,8 +15,7 @@
     href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;900&family=Inter:wght@400;500;600&family=Fira+Code:wght@400;600&display=swap"
     rel="stylesheet">
 
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="../assets/favicon.png">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 
   <!-- CSS -->
   <link rel="stylesheet" href="./style.css">
@@ -30,9 +29,23 @@
   <!-- Floating Theme Toggle Button -->
   <button id="btn-theme-toggle" class="theme-toggle-btn" aria-label="Toggle Theme">
     <!-- Sun icon (shown in dark mode by default) -->
-    <svg id="theme-icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+    <svg id="theme-icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sun">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2" />
+      <path d="M12 20v2" />
+      <path d="m4.93 4.93 1.41 1.41" />
+      <path d="m17.66 17.66 1.41 1.41" />
+      <path d="M2 12h2" />
+      <path d="M20 12h2" />
+      <path d="m6.34 17.66-1.41 1.41" />
+      <path d="m19.07 4.93-1.41 1.41" />
+    </svg>
     <!-- Moon icon (hidden by default) -->
-    <svg id="theme-icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-moon hidden"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    <svg id="theme-icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-moon hidden">
+      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+    </svg>
   </button>
 
   <!-- Floating Nav Bar -->
@@ -175,21 +188,31 @@
 
             <!-- Error container for failed load/simulation -->
             <div id="manage-error-container" class="hidden" style="width: 100%;">
-              <div class="info-banner error" style="margin-top: 1.5rem; flex-direction: column; align-items: stretch; gap: 0.75rem; padding: 1.25rem; border-radius: 16px; display: flex; background: rgba(255, 23, 68, 0.05); border: 1px solid rgba(255, 23, 68, 0.15); width: 100%;">
-                <span style="font-weight: 700; font-size: 0.9rem; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.35rem; color: var(--color-error);">
+              <div class="info-banner error"
+                style="margin-top: 1.5rem; flex-direction: column; align-items: stretch; gap: 0.75rem; padding: 1.25rem; border-radius: 16px; display: flex; background: rgba(255, 23, 68, 0.05); border: 1px solid rgba(255, 23, 68, 0.15); width: 100%;">
+                <span
+                  style="font-weight: 700; font-size: 0.9rem; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.35rem; color: var(--color-error);">
                   ⚠️ ON-CHAIN SIMULATION ERROR
                 </span>
-                
+
                 <!-- Bento sub-card: Contract ID -->
-                <div style="background: rgba(0, 0, 0, 0.2); border: 1px solid var(--border-color); border-radius: 12px; padding: 0.75rem 1rem; width: 100%; min-width: 0;">
-                  <span style="display: block; font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.05em; margin-bottom: 0.25rem;">CONTRACT ID</span>
-                  <span id="manage-error-address" class="address-mono text-truncate" style="display: block; font-size: 0.8rem; color: var(--text-primary);">--</span>
+                <div
+                  style="background: rgba(0, 0, 0, 0.2); border: 1px solid var(--border-color); border-radius: 12px; padding: 0.75rem 1rem; width: 100%; min-width: 0;">
+                  <span
+                    style="display: block; font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.05em; margin-bottom: 0.25rem;">CONTRACT
+                    ID</span>
+                  <span id="manage-error-address" class="address-mono text-truncate"
+                    style="display: block; font-size: 0.8rem; color: var(--text-primary);">--</span>
                 </div>
 
                 <!-- Bento sub-card: Error Detail -->
-                <div style="background: rgba(0, 0, 0, 0.2); border: 1px solid var(--border-color); border-radius: 12px; padding: 0.75rem 1rem; width: 100%; min-width: 0;">
-                  <span style="display: block; font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.05em; margin-bottom: 0.25rem;">ERROR DETAIL</span>
-                  <p id="manage-error-msg" style="font-size: 0.8rem; line-height: 1.5; color: var(--text-secondary); margin: 0; word-break: break-word; white-space: normal;">
+                <div
+                  style="background: rgba(0, 0, 0, 0.2); border: 1px solid var(--border-color); border-radius: 12px; padding: 0.75rem 1rem; width: 100%; min-width: 0;">
+                  <span
+                    style="display: block; font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.05em; margin-bottom: 0.25rem;">ERROR
+                    DETAIL</span>
+                  <p id="manage-error-msg"
+                    style="font-size: 0.8rem; line-height: 1.5; color: var(--text-secondary); margin: 0; word-break: break-word; white-space: normal;">
                     --
                   </p>
                 </div>
@@ -202,7 +225,8 @@
                 <h3 id="detail-title" class="escrow-title-text">APARTMENT 4B - GREENVIEW HEIGHTS</h3>
                 <span id="detail-status-badge" class="badge-status status-active">ACTIVE</span>
               </div>
-              <p id="detail-desc" class="escrow-desc-text">Security deposit for lease contract active from July 2026.</p>
+              <p id="detail-desc" class="escrow-desc-text">Security deposit for lease contract active from July 2026.
+              </p>
 
               <!-- Dual Columns from/to -->
               <div class="transfer-visualizer">
@@ -239,12 +263,14 @@
                 <div class="info-banner warning">
                   <span>Escrow initialized but funds are not deposited yet.</span>
                 </div>
-                <button id="btn-fund-escrow" class="btn btn-primary btn-full pill-btn">FUND ESCROW NOW (DEPOSIT)</button>
+                <button id="btn-fund-escrow" class="btn btn-primary btn-full pill-btn">FUND ESCROW NOW
+                  (DEPOSIT)</button>
               </div>
 
               <div class="action-section hidden" id="actions-active">
                 <h4 class="action-heading">PROPOSE RELEASE SPLIT</h4>
-                <p class="action-desc">Negotiate the refund. Enter the split. If landlord and tenant splits match, release
+                <p class="action-desc">Negotiate the refund. Enter the split. If landlord and tenant splits match,
+                  release
                   executes automatically.</p>
 
                 <div class="slider-container">
@@ -255,12 +281,14 @@
                   <input type="range" id="range-split" min="0" max="800" value="400" class="split-slider">
                 </div>
 
-                <button id="btn-propose-split" class="btn btn-primary btn-full pill-btn">SUBMIT RELEASE PROPOSAL</button>
+                <button id="btn-propose-split" class="btn btn-primary btn-full pill-btn">SUBMIT RELEASE
+                  PROPOSAL</button>
 
                 <div class="dispute-trigger">
                   <p class="action-desc">Disagreements? Initiate a formal dispute to request arbitrator resolution.</p>
                   <div class="search-box">
-                    <input type="text" id="input-dispute-reason" placeholder="State reason for dispute (e.g. damages)...">
+                    <input type="text" id="input-dispute-reason"
+                      placeholder="State reason for dispute (e.g. damages)...">
                     <button id="btn-dispute" class="btn btn-danger-outline pill-btn">RAISE DISPUTE</button>
                   </div>
                 </div>
@@ -324,7 +352,7 @@
     <!-- Page 2: Dashboard Section -->
     <div id="page-dashboard" class="page-section hidden">
       <div class="workspace-grid bento-grid">
-        
+
         <!-- Platform Metrics Card -->
         <div class="bento-card bento-card-metrics" style="grid-column: span 1; grid-row: span 3;">
           <h2 class="section-title">PLATFORM PERFORMANCE</h2>
@@ -367,29 +395,34 @@
     <!-- Page 3: Documentation Section -->
     <div id="page-docs" class="page-section hidden">
       <div class="workspace-grid bento-grid">
-        
+
         <!-- Smart Contract Overview -->
         <div class="bento-card bento-card-docs-intro" style="grid-column: span 2; grid-row: span 3;">
           <h2 class="section-title">SOROBAN SMART ESCROW SPECIFICATION</h2>
           <p class="section-desc">Technical layout of the cryptographic rental deposit protocol.</p>
           <div class="docs-content">
             <p class="docs-paragraph">
-              Deposhield uses dedicated, WASM-compiled smart contract instances deployed to the <strong>Stellar Soroban Network</strong>. 
-              By committing security deposits directly to code logic rather than a single entity, the platform ensures trustless, neutral dispute backstops.
+              Deposhield uses dedicated, WASM-compiled smart contract instances deployed to the <strong>Stellar Soroban
+                Network</strong>.
+              By committing security deposits directly to code logic rather than a single entity, the platform ensures
+              trustless, neutral dispute backstops.
             </p>
             <h3 class="docs-subheading">Escrow Role Permissions</h3>
             <div class="role-grid">
               <div class="role-card tenant">
                 <span class="role-badge">TENANT</span>
-                <p class="role-desc">Funs the escrow on-chain. Submits move-out refund split proposals. Can trigger formal arbitrator disputes.</p>
+                <p class="role-desc">Funs the escrow on-chain. Submits move-out refund split proposals. Can trigger
+                  formal arbitrator disputes.</p>
               </div>
               <div class="role-card landlord">
                 <span class="role-badge landlord">LANDLORD</span>
-                <p class="role-desc">Notified of lease funding. Proposes split refunds. Reclaims allocated damages once splits match.</p>
+                <p class="role-desc">Notified of lease funding. Proposes split refunds. Reclaims allocated damages once
+                  splits match.</p>
               </div>
               <div class="role-card arbitrator">
                 <span class="role-badge arbitrator">ARBITRATOR</span>
-                <p class="role-desc">Acts as a neutral third-party key-holder. Resolves active disputes by submitting the final distribution split.</p>
+                <p class="role-desc">Acts as a neutral third-party key-holder. Resolves active disputes by submitting
+                  the final distribution split.</p>
               </div>
             </div>
           </div>
