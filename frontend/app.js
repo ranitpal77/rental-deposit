@@ -641,6 +641,11 @@ async function handleCreateEscrow(e) {
 async function loadEscrow(address) {
   activeEscrowAddress = address;
   activeEscrowDetailsPanel.classList.add('hidden');
+  
+  const manageErrorContainer = document.getElementById('manage-error-container');
+  if (manageErrorContainer) {
+    manageErrorContainer.classList.add('hidden');
+  }
 
   try {
     // 1. Fetch metadata from local storage
@@ -706,7 +711,21 @@ async function loadEscrow(address) {
     activeEscrowDetailsPanel.classList.remove('hidden');
   } catch (err) {
     console.error('Failed to load escrow details:', err);
-    alert(`Failed to load escrow from Soroban chain: ${err.message}. Ensure it is initialized.`);
+    
+    // Display premium inline error block instead of raw alert dialog
+    if (manageErrorContainer) {
+      const manageErrorMsg = document.getElementById('manage-error-msg');
+      if (manageErrorMsg) {
+        manageErrorMsg.innerHTML = `
+          The smart contract at <code class="address-mono" style="background: rgba(255,255,255,0.06); padding: 0.1rem 0.35rem; border-radius: 6px; font-size: 0.75rem; word-break: break-all; color: var(--text-primary);">${address}</code> 
+          failed to load. Error: <strong>${err.message}</strong>. 
+          It may be uninitialized on this network instance, expired, or the contract address is invalid.
+        `;
+      }
+      manageErrorContainer.classList.remove('hidden');
+    } else {
+      alert(`Failed to load escrow from Soroban chain: ${err.message}. Ensure it is initialized.`);
+    }
   }
 }
 

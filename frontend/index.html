@@ -160,6 +160,18 @@
               <button id="btn-search-escrow" class="btn btn-secondary pill-btn">LOAD</button>
             </div>
 
+            <!-- Error container for failed load/simulation -->
+            <div id="manage-error-container" class="hidden">
+              <div class="info-banner error" style="margin-top: 1.5rem; flex-direction: column; align-items: flex-start; gap: 0.5rem; padding: 1.25rem; border-radius: 12px; display: flex;">
+                <span style="font-weight: 700; font-size: 0.9rem; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.35rem; color: var(--color-error);">
+                  ⚠️ ON-CHAIN SIMULATION ERROR
+                </span>
+                <p style="font-size: 0.8rem; line-height: 1.5; color: var(--text-secondary); margin-bottom: 0.25rem;" id="manage-error-msg">
+                  The smart contract at this address returned a simulation error. It may be uninitialized, expired, or the network has reset.
+                </p>
+              </div>
+            </div>
+
             <div id="active-escrow-details" class="hidden">
               <!-- Loaded Escrow Summary -->
               <div class="loaded-escrow-header">
