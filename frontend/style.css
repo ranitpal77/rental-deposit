@@ -29,6 +29,75 @@
   --transition-normal: 0.25s ease;
 }
 
+/* Light Theme Variables Override & Styling */
+body.light-theme {
+  --bg-color: #F6F7F9;
+  --surface-color: #FFFFFF;
+  --surface-color-light: #F1F3F5;
+  --border-color: rgba(0, 0, 0, 0.08);
+  --border-color-hover: rgba(0, 0, 0, 0.16);
+  
+  --text-primary: #111112;
+  --text-secondary: #4A4A50;
+  --text-muted: #828286;
+
+  --color-success-bg: rgba(0, 230, 118, 0.12);
+  --color-pending-bg: rgba(255, 196, 0, 0.12);
+  --color-error-bg: rgba(255, 23, 68, 0.12);
+}
+
+body.light-theme .navbar {
+  background-color: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+}
+
+body.light-theme .bento-card {
+  background-color: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.03);
+}
+
+body.light-theme .mobile-menu {
+  background-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .grid-background {
+  background-image: radial-gradient(rgba(0, 0, 0, 0.06) 1px, transparent 1px);
+}
+
+body.light-theme input, 
+body.light-theme textarea, 
+body.light-theme select {
+  background-color: rgba(0, 0, 0, 0.03);
+  color: var(--text-primary);
+}
+
+body.light-theme input:focus, 
+body.light-theme textarea:focus, 
+body.light-theme select:focus {
+  background-color: var(--surface-color);
+}
+
+body.light-theme .address-mono {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+body.light-theme .escrow-row {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+body.light-theme .escrow-row:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+body.light-theme .search-box input {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+body.light-theme .visual-arrow {
+  color: var(--text-muted);
+}
+
 /* Reset */
 * {
   box-sizing: border-box;
