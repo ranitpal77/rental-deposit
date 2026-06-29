@@ -27,27 +27,8 @@ let activeEscrowDetails = null;
 function getLocalEscrows() {
   const data = localStorage.getItem('deposhield_escrows');
   if (!data) {
-    const defaultData = [
-      {
-        address: 'CALSOH3GT4ZC4TSQRMMSJFDXGHUJDIAMM6HE52APRQECHI3OC7PCGURI',
-        tenant: 'GD7HBP77O76P6RYMFLZ26J6R74WSHU6DCOFHRFDFYJZ4TZZ2J4E2PWTN',
-        tenantName: 'Alex Mercer (Tenant)',
-        landlord: 'GB543SZG2HMLW6WJ56TCR5UHQEHLCOHRFDFYJZ4TZZ2J4E2PLANDLORD',
-        landlordName: 'Sarah Jenkins (Landlord)',
-        arbitrator: 'GAARBITRATOR77O76P6RYMFLZ26J6R74WSHU6DCOFHRFDFYJZ4TZZ2JARBI',
-        arbitratorName: 'Metropolitan Housing Authority',
-        amount: '800 XLM',
-        status: 'Active',
-        title: 'Apartment 4B - Greenview Heights',
-        description: 'Security deposit for lease contract active from July 2026.',
-        history: [
-          { timestamp: new Date(Date.now() - 3600000 * 24).toISOString(), event: 'Escrow Created on-chain' },
-          { timestamp: new Date(Date.now() - 3600000 * 23).toISOString(), event: 'Escrow Funded by Tenant (800 XLM)' }
-        ]
-      }
-    ];
-    localStorage.setItem('deposhield_escrows', JSON.stringify(defaultData));
-    return defaultData;
+    localStorage.setItem('deposhield_escrows', JSON.stringify([]));
+    return [];
   }
   return JSON.parse(data);
 }
@@ -112,7 +93,6 @@ const actionsReleased = document.getElementById('actions-released');
 const lblReleaseInfo = document.getElementById('lbl-release-info');
 
 const dashboardEscrowList = document.getElementById('dashboard-escrow-list');
-const notificationLogs = document.getElementById('notification-logs');
 
 // Page Navigation Router Selectors
 const navbarMenu = document.getElementById('navbar-menu');
@@ -163,8 +143,6 @@ function switchPage(pageId) {
 document.addEventListener('DOMContentLoaded', () => {
   initWallet();
   loadDashboardEscrows();
-  pollNotifications();
-  setInterval(pollNotifications, 5000);
   setInterval(loadDashboardEscrows, 8000);
   setInterval(updateWalletBalance, 10000);
 
@@ -294,11 +272,17 @@ function setConnectedWallet(address) {
   walletInfo.classList.remove('hidden');
   btnConnect.classList.add('hidden');
   
+  const workspaceGrid = document.querySelector('#page-workspace .bento-grid');
+  if (workspaceGrid) {
+    workspaceGrid.classList.add('wallet-connected');
+  }
+
   if (walletBalanceCard) {
     walletBalanceCard.classList.remove('hidden');
     walletBalanceAddress.textContent = `${address.slice(0, 8)}...${address.slice(-8)}`;
   }
   updateWalletBalance();
+  loadDashboardEscrows();
   console.log('Wallet connected:', address);
 }
 
@@ -308,11 +292,17 @@ function disconnectWallet() {
   walletInfo.classList.add('hidden');
   btnConnect.classList.remove('hidden');
   
+  const workspaceGrid = document.querySelector('#page-workspace .bento-grid');
+  if (workspaceGrid) {
+    workspaceGrid.classList.remove('wallet-connected');
+  }
+
   if (walletBalanceCard) {
     walletBalanceCard.classList.add('hidden');
     walletBalanceAddress.textContent = '--';
     walletBalanceVal.textContent = '-- XLM';
   }
+  loadDashboardEscrows();
   console.log('Wallet disconnected');
 }
 
@@ -344,7 +334,12 @@ async function updateWalletBalance() {
 // Local Storage Actions
 async function loadDashboardEscrows() {
   try {
-    const escrows = getLocalEscrows();
+    const allEscrows = getLocalEscrows();
+    
+    // Filter to only escrows where the currently connected wallet is a party (tenant, landlord, or arbitrator)
+    const escrows = userAddress 
+      ? allEscrows.filter(e => e.tenant === userAddress || e.landlord === userAddress || e.arbitrator === userAddress)
+      : [];
     
     // Calculate and update Dashboard platform metrics
     let tvl = 0;
@@ -379,8 +374,13 @@ async function loadDashboardEscrows() {
     if (statResolved) statResolved.textContent = resolvedCount;
     if (statDisputes) statDisputes.textContent = disputeCount;
 
+    if (!userAddress) {
+      dashboardEscrowList.innerHTML = `<div class="dashboard-placeholder">Please connect your wallet to view your active escrows.</div>`;
+      return;
+    }
+
     if (escrows.length === 0) {
-      dashboardEscrowList.innerHTML = `<div class="dashboard-placeholder">No active escrows registered.</div>`;
+      dashboardEscrowList.innerHTML = `<div class="dashboard-placeholder">No active escrows registered for this wallet.</div>`;
       return;
     }
 
@@ -420,57 +420,6 @@ function getStatusBadgeClass(status) {
     case 'released':
     case 'released (disputed)': return 'status-released';
     default: return 'status-released';
-  }
-}
-
-async function pollNotifications() {
-  try {
-    const escrows = getLocalEscrows();
-    
-    // Aggregate history logs as notifications
-    const allLogs = [];
-    escrows.forEach(e => {
-      e.history.forEach(h => {
-        allLogs.push({
-          timestamp: h.timestamp,
-          time: new Date(h.timestamp).toLocaleTimeString(),
-          title: e.title,
-          event: h.event,
-          escrow: e
-        });
-      });
-    });
-
-    // Sort by timestamp desc
-    allLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    notificationLogs.innerHTML = allLogs.slice(0, 10).map(log => {
-      let recipient = 'Tenant & Landlord';
-      let roleClass = 'tenant';
-      if (log.event.includes('Dispute resolved')) {
-        recipient = 'Delhi Housing Authority (Arbitrator)';
-        roleClass = 'arbitrator';
-      } else if (log.event.includes('Dispute declared')) {
-        recipient = 'Delhi Housing Authority';
-        roleClass = 'arbitrator';
-      } else if (log.event.includes('Funded')) {
-        recipient = `${log.escrow.landlordName} (Landlord)`;
-        roleClass = 'landlord';
-      } else if (log.event.includes('Created')) {
-        recipient = `${log.escrow.landlordName} (Landlord)`;
-        roleClass = 'landlord';
-      }
-
-      return `
-        <div class="log-entry">
-          <span class="log-time">[${log.time}] (${log.title})</span>
-          <span class="log-label ${roleClass}">TO: ${recipient}</span>
-          <span class="log-msg">${log.event}</span>
-        </div>
-      `;
-    }).join('');
-  } catch (err) {
-    console.error('Failed to poll notifications:', err);
   }
 }
 

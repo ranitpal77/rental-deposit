@@ -1,13 +1,13 @@
 const express = require('express');
 const cors = require('cors');
+const serverless = require('serverless-http');
 
-const app = express();
-const PORT = process.env.PORT || 5000;
+const app = WebAppExpress = express();
 
 app.use(cors());
 app.use(express.json());
 
-// In-memory database of escrows
+// In-memory database of escrows (empty clean state)
 let escrows = [];
 
 // Helper to log notifications to console
@@ -157,6 +157,5 @@ app.post('/api/escrows/:address/resolve', (req, res) => {
   res.json(escrow);
 });
 
-app.listen(PORT, () => {
-  console.log(`Rental Escrow backend running on port ${PORT}`);
-});
+module.exports = app;
+module.exports.handler = serverless(app);
