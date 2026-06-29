@@ -554,13 +554,9 @@ async function handleCreateEscrow(e) {
   btnSubmitCreate.textContent = 'PROPOSING LEASE INITIALIZATION...';
 
   try {
-    // 1. Prompt user to deploy using terminal as pre-step, or generate a mockup deploy
-    // The user's contract address is what they input or we can deploy/mock it
-    // Wait, let's look at how the contract is initialized.
-    // The user has compiled the contract, so we need a contract address to call!
-    // Let's ask them for the contract address they deployed.
-    const contractAddress = prompt('Please enter the Soroban Contract ID you deployed from the terminal:');
+    const contractAddress = document.getElementById('input-contract-id').value.trim();
     if (!contractAddress) {
+      alert('Please enter a valid Deployed Contract Address.');
       btnSubmitCreate.disabled = false;
       btnSubmitCreate.textContent = 'INITIALIZE ESCROW ON-CHAIN';
       return;
