@@ -75,7 +75,8 @@ body.light-theme select {
 body.light-theme input:focus, 
 body.light-theme textarea:focus, 
 body.light-theme select:focus {
-  background-color: var(--surface-color);
+  background-color: #F1F3F5;
+  border-color: var(--text-primary);
 }
 
 body.light-theme .address-mono {
