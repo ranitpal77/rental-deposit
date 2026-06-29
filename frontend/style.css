@@ -98,6 +98,20 @@ body.light-theme .visual-arrow {
   color: var(--text-muted);
 }
 
+body.light-theme .tab-control {
+  background-color: var(--surface-color-light);
+}
+
+body.light-theme .tab-btn.active {
+  background-color: var(--surface-color);
+  color: var(--text-primary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+body.light-theme .footer {
+  background-color: var(--surface-color-light);
+}
+
 /* Reset */
 * {
   box-sizing: border-box;
