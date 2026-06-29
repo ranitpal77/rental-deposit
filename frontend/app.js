@@ -540,10 +540,10 @@ async function handleCreateEscrow(e) {
   const tenantName = document.getElementById('input-tenant-name').value.trim();
   const landlordName = document.getElementById('input-landlord-name').value.trim();
 
-  // For native, we use the standard SAC token on Testnet (usually Native XLM token is CAS3J7GYUVRI77UTQD73NQDOWB4L65B6O7GPMJNDKCQD24J32KCP7SFH)
+  // For native, we use the standard SAC token on Testnet (Native XLM token is CACUJREIZHPGRMWV4OJGJQ4RGPR4GUSTNLKDNYB2PJEY72EHKBTPMNNF)
   const token = tokenSelect === 'native' 
-    ? 'CAS3J7GYUVRI77UTQD73NQDOWB4L65B6O7GPMJNDKCQD24J32KCP7SFH' 
-    : 'CD7Q523WTYX2UOPLHEXZ26J6R74WSHU6DCOFHRFDFYJZ4TZZ2J4E2USDC'; // Mock USDC
+    ? 'CACUJREIZHPGRMWV4OJGJQ4RGPR4GUSTNLKDNYB2PJEY72EHKBTPMNNF' 
+    : 'CD6BLQ43MNALRYGKLCSDPQWKC4SN46LZGRHPNJSJZLDC6H2H3NSO5IZL'; // Mock USDC
 
   if (!userAddress) {
     alert('Please connect your Freighter wallet to execute smart contract operations.');
