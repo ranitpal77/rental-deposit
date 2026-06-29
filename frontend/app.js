@@ -641,7 +641,7 @@ async function loadEscrow(address) {
     const tenantAddr = await simulateCall(address, 'get_tenant');
     const landlordAddr = await simulateCall(address, 'get_landlord');
     const arbitratorAddr = await simulateCall(address, 'get_arbitrator');
-    const amountVal = await simulateCall(address, 'get_amount');
+    const amountVal = Number(await simulateCall(address, 'get_amount'));
     const isFunded = await simulateCall(address, 'is_funded');
     const status = await simulateCall(address, 'get_status'); // 0=Created, 1=Active, 2=Disputed, 3=Released
 
