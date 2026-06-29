@@ -1041,3 +1041,244 @@ input:focus, textarea:focus, select:focus {
     padding: 0.2rem;
   }
 }
+
+/* Multi-Page Navigation Menu */
+.navbar-menu {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.nav-link {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+  padding: 0.5rem 0.25rem;
+  position: relative;
+}
+
+.nav-link:hover {
+  color: var(--text-primary);
+}
+
+.nav-link.active {
+  color: var(--text-primary);
+}
+
+.nav-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: #FFFFFF;
+  border-radius: 2px;
+}
+
+/* Page Section visibility */
+.page-section {
+  transition: opacity 0.2s ease-in-out;
+}
+.page-section.hidden {
+  display: none !important;
+}
+
+/* Metrics Dashboard Cards */
+.metrics-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  height: 100%;
+  justify-content: center;
+}
+
+.metric-item {
+  background-color: var(--surface-color-light);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 1.15rem 1.25rem;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-normal);
+}
+
+.metric-item:hover {
+  border-color: var(--border-color-hover);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.metric-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+
+.metric-value {
+  display: block;
+  font-weight: 700;
+  font-size: 1.35rem;
+  color: var(--text-primary);
+}
+
+/* Documentation Content Styling */
+.docs-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  height: 100%;
+}
+
+.docs-paragraph {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.docs-subheading {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-top: 0.5rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+}
+
+/* Role Grid layout */
+.role-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.role-card {
+  background-color: var(--surface-color-light);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.role-badge {
+  display: inline-block;
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--color-success);
+  background-color: var(--color-success-bg);
+  border: 1px solid rgba(0, 230, 118, 0.25);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+}
+
+.role-badge.landlord {
+  color: var(--color-info);
+  background-color: rgba(41, 121, 255, 0.08);
+  border-color: rgba(41, 121, 255, 0.25);
+}
+
+.role-badge.arbitrator {
+  color: var(--color-error);
+  background-color: var(--color-error-bg);
+  border-color: rgba(255, 23, 68, 0.25);
+}
+
+.role-desc {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+/* Timeline Lifecycle Steps */
+.lifecycle-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  height: 100%;
+  justify-content: center;
+}
+
+.timeline-step {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.step-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: var(--surface-color-light);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.step-info h4 {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.15rem;
+  text-transform: uppercase;
+}
+
+.step-info p {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+/* Stacking menu inside navbar under 768px */
+@media (max-width: 768px) {
+  .navbar-menu {
+    gap: 1rem;
+  }
+  .nav-link {
+    font-size: 0.75rem;
+  }
+  .role-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .navbar {
+    flex-direction: column;
+    gap: 0.75rem;
+    border-radius: 20px;
+    padding: 0.75rem 1rem;
+    width: calc(100% - 1rem);
+    margin: 1rem auto;
+  }
+  .navbar-actions {
+    width: 100%;
+    justify-content: center;
+  }
+  .navbar-menu {
+    width: 100%;
+    justify-content: center;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0.5rem 0;
+  }
+}

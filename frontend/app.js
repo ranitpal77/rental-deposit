@@ -114,6 +114,37 @@ const lblReleaseInfo = document.getElementById('lbl-release-info');
 const dashboardEscrowList = document.getElementById('dashboard-escrow-list');
 const notificationLogs = document.getElementById('notification-logs');
 
+// Page Navigation Router Selectors
+const navWorkspace = document.getElementById('nav-workspace');
+const navDashboard = document.getElementById('nav-dashboard');
+const navDocs = document.getElementById('nav-docs');
+const pageWorkspace = document.getElementById('page-workspace');
+const pageDashboard = document.getElementById('page-dashboard');
+const pageDocs = document.getElementById('page-docs');
+
+function switchPage(pageId) {
+  if (!pageWorkspace || !pageDashboard || !pageDocs) return;
+  pageWorkspace.classList.add('hidden');
+  pageDashboard.classList.add('hidden');
+  pageDocs.classList.add('hidden');
+
+  navWorkspace.classList.remove('active');
+  navDashboard.classList.remove('active');
+  navDocs.classList.remove('active');
+
+  if (pageId === 'workspace') {
+    pageWorkspace.classList.remove('hidden');
+    navWorkspace.classList.add('active');
+  } else if (pageId === 'dashboard') {
+    pageDashboard.classList.remove('hidden');
+    navDashboard.classList.add('active');
+    loadDashboardEscrows();
+  } else if (pageId === 'docs') {
+    pageDocs.classList.remove('hidden');
+    navDocs.classList.add('active');
+  }
+}
+
 // Init UI & Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
   initWallet();
@@ -122,6 +153,13 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(pollNotifications, 5000);
   setInterval(loadDashboardEscrows, 8000);
   setInterval(updateWalletBalance, 10000);
+
+  // Page Router binding
+  if (navWorkspace && navDashboard && navDocs) {
+    navWorkspace.addEventListener('click', () => switchPage('workspace'));
+    navDashboard.addEventListener('click', () => switchPage('dashboard'));
+    navDocs.addEventListener('click', () => switchPage('docs'));
+  }
 
   // Tabs
   tabCreate.addEventListener('click', () => {
@@ -258,6 +296,39 @@ async function loadDashboardEscrows() {
   try {
     const escrows = getLocalEscrows();
     
+    // Calculate and update Dashboard platform metrics
+    let tvl = 0;
+    let activeCount = 0;
+    let resolvedCount = 0;
+    let disputeCount = 0;
+    
+    escrows.forEach(escrow => {
+      const status = escrow.status.toLowerCase();
+      const amount = parseFloat(escrow.amount) || 0;
+      
+      if (status === 'active') {
+        activeCount++;
+        tvl += amount;
+      } else if (status === 'disputed') {
+        disputeCount++;
+        tvl += amount;
+      } else if (status === 'released' || status === 'released (disputed)' || status === 'resolved') {
+        resolvedCount++;
+      } else if (status === 'created') {
+        activeCount++;
+      }
+    });
+
+    const statTvl = document.getElementById('stat-tvl');
+    const statActive = document.getElementById('stat-active');
+    const statResolved = document.getElementById('stat-resolved');
+    const statDisputes = document.getElementById('stat-disputes');
+    
+    if (statTvl) statTvl.textContent = `${tvl} XLM`;
+    if (statActive) statActive.textContent = activeCount;
+    if (statResolved) statResolved.textContent = resolvedCount;
+    if (statDisputes) statDisputes.textContent = disputeCount;
+
     if (escrows.length === 0) {
       dashboardEscrowList.innerHTML = `<div class="dashboard-placeholder">No active escrows registered.</div>`;
       return;
@@ -267,7 +338,7 @@ async function loadDashboardEscrows() {
       <div class="escrow-row" data-address="${escrow.address}">
         <div class="escrow-row-meta">
           <span class="escrow-row-title">${escrow.title}</span>
-          <span class="escrow-row-address address-mono">${escrow.address}</span>
+          <span class="escrow-row-address address-mono text-truncate">${escrow.address}</span>
         </div>
         <div class="escrow-row-stats">
           <span class="escrow-row-amount address-mono">${escrow.amount}</span>
@@ -280,6 +351,7 @@ async function loadDashboardEscrows() {
     document.querySelectorAll('.escrow-row').forEach(row => {
       row.addEventListener('click', () => {
         const addr = row.getAttribute('data-address');
+        switchPage('workspace');
         tabManage.click();
         inputSearchAddress.value = addr;
         loadEscrow(addr);
