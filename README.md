@@ -52,13 +52,15 @@ By leveraging Stellar's protocol-level primitives and Soroban's smart contractin
 ---
 
 ### 📸 Wallet Connected State 
-![Wallet Connected](./assets/Wallet-connected-state.png)
+![Wallet Connected](./assets/Wallet-connected-state-01.png)
+![Wallet Connected](./assets/Wallet-connected-state-02.png)
 
 ### 📸 Wallet Balance
 ![Wallet Balance](./assets/Balance-displayed.png)
 
 ### 📸 Transaction Screenshot (Successful Testnet Transaction)
-![Transaction Screenshot](./assets/Successful-testnet-transaction.png)
+![Transaction Screenshot](./assets/Successful-testnet-transaction-01.png)
+![Transaction Screenshot](./assets/Successful-testnet-transaction-02.png)
 
 ### 📸 Deployed Smart Contract Screenshot
 ![Deployed Contract](./assets/deployed-contract-02.png)
@@ -330,7 +332,16 @@ rental-deposit/
 
 ---
 
-## 🌐 Live Demo
+## 🌐 Live Site
 [Live demo link](https://deposhield.netlify.app/)
+
+---
+
+## 🌐 Live Demo
+[Demo video 01](./assets/demo-video-01.mp4) (Tanante & Landlord)
+
+
+[Demo video 02](./assets/demo-video-02.mp4) (Tanante & Landlord & Arbitrator)
+
 
 ---
