@@ -242,6 +242,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (address) loadEscrow(address);
   });
 
+  const btnGoDashboard = document.getElementById('btn-go-dashboard');
+  if (btnGoDashboard) {
+    btnGoDashboard.addEventListener('click', () => {
+      switchPage('dashboard');
+    });
+  }
+
   // Sliders for Split Release
   rangeSplit.addEventListener('input', (e) => {
     const val = parseInt(e.target.value);
@@ -275,7 +282,7 @@ async function initWallet() {
 async function connectWallet() {
   const connectedResult = await isConnected();
   if (!connectedResult || !connectedResult.isConnected) {
-    alert('Please install the Freighter wallet extension to use this application.');
+    showToast('Please install the Freighter wallet extension to use this application.', 'info');
     return;
   }
   try {
@@ -288,7 +295,7 @@ async function connectWallet() {
     }
   } catch (err) {
     console.error('Wallet connection rejected:', err);
-    alert('Failed to connect to Freighter wallet.');
+    showToast('Failed to connect to Freighter wallet.', 'error');
   }
 }
 
@@ -412,10 +419,10 @@ async function loadDashboardEscrows() {
     }
 
     dashboardEscrowList.innerHTML = escrows.map(escrow => `
-      <div class="escrow-row" data-address="${escrow.address}">
+      <div class="escrow-row" data-lease-id="${escrow.leaseId || ''}">
         <div class="escrow-row-meta">
           <span class="escrow-row-title">${escrow.title}</span>
-          <span class="escrow-row-address address-mono text-truncate">${escrow.address}</span>
+          <span class="escrow-row-address address-mono text-truncate">${escrow.leaseId ? `Lease ID: ${escrow.leaseId}` : `Contract ID: ${escrow.address}`}</span>
         </div>
         <div class="escrow-row-stats">
           <span class="escrow-row-amount address-mono">${escrow.amount}</span>
@@ -427,11 +434,11 @@ async function loadDashboardEscrows() {
     // Attach click events
     document.querySelectorAll('.escrow-row').forEach(row => {
       row.addEventListener('click', () => {
-        const addr = row.getAttribute('data-address');
+        const leaseId = row.getAttribute('data-lease-id');
         switchPage('workspace');
         tabManage.click();
-        inputSearchAddress.value = addr;
-        loadEscrow(addr);
+        inputSearchAddress.value = leaseId;
+        loadEscrow(leaseId);
       });
     });
   } catch (err) {
@@ -476,7 +483,7 @@ async function simulateCall(contractId, method, args = []) {
 
 async function executeTx(contractId, method, args = []) {
   if (!userAddress) {
-    alert('Please connect your Freighter wallet first.');
+    showToast('Please connect your Freighter wallet first.', 'error');
     throw new Error('Wallet not connected');
   }
 
@@ -499,7 +506,10 @@ async function executeTx(contractId, method, args = []) {
   // Sign with Freighter
   const signResult = await signTransaction(tx.toXDR(), { networkPassphrase: NETWORK_PASSPHRASE });
   if (signResult.error) {
-    throw new Error(`Signing rejected or failed: ${signResult.error}`);
+    const errorMsg = typeof signResult.error === 'string'
+      ? signResult.error
+      : (signResult.error.message || signResult.error.error || 'User cancelled transaction signing');
+    throw new Error(`Signing rejected or failed: ${errorMsg}`);
   }
   const signedTx = TransactionBuilder.fromXDR(signResult.signedTxXdr, NETWORK_PASSPHRASE);
 
@@ -540,13 +550,13 @@ async function handleCreateEscrow(e) {
   const tenantName = document.getElementById('input-tenant-name').value.trim();
   const landlordName = document.getElementById('input-landlord-name').value.trim();
 
-  // For native, we use the standard SAC token on Testnet (Native XLM token is CACUJREIZHPGRMWV4OJGJQ4RGPR4GUSTNLKDNYB2PJEY72EHKBTPMNNF)
+  // For native, we use the standard SAC token on Testnet (Native XLM token is CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC)
   const token = tokenSelect === 'native' 
-    ? 'CACUJREIZHPGRMWV4OJGJQ4RGPR4GUSTNLKDNYB2PJEY72EHKBTPMNNF' 
+    ? 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC' 
     : 'CD6BLQ43MNALRYGKLCSDPQWKC4SN46LZGRHPNJSJZLDC6H2H3NSO5IZL'; // Mock USDC
 
   if (!userAddress) {
-    alert('Please connect your Freighter wallet to execute smart contract operations.');
+    showToast('Please connect your Freighter wallet to execute smart contract operations.', 'error');
     return;
   }
 
@@ -556,16 +566,21 @@ async function handleCreateEscrow(e) {
   try {
     const contractAddress = document.getElementById('input-contract-id').value.trim();
     if (!contractAddress) {
-      alert('Please enter a valid Deployed Contract Address.');
+      showToast('Please enter a valid Deployed Contract Address.', 'error');
       btnSubmitCreate.disabled = false;
       btnSubmitCreate.textContent = 'INITIALIZE ESCROW ON-CHAIN';
       return;
     }
 
-    console.log('Initializing contract', contractAddress);
+    // Generate a unique 16-digit random u64 Lease ID
+    const leaseId = BigInt(Math.floor(Math.random() * 9000000000000000) + 1000000000000000);
+    const leaseIdStr = leaseId.toString();
+
+    console.log('Initializing contract', contractAddress, 'with Lease ID', leaseIdStr);
     
-    // Call contract.initialize(...)
+    // Call contract.initialize(lease_id, tenant, landlord, arbitrator, token, amount)
     const args = [
+      nativeToScVal(leaseId, { type: 'u64' }),
       nativeToScVal(userAddress, { type: 'address' }), // tenant
       nativeToScVal(landlord, { type: 'address' }),
       nativeToScVal(arbitrator, { type: 'address' }),
@@ -578,6 +593,7 @@ async function handleCreateEscrow(e) {
     // Save metadata locally
     const escrows = getLocalEscrows();
     const newEscrow = {
+      leaseId: leaseIdStr,
       address: contractAddress,
       tenant: userAddress,
       tenantName: tenantName || 'Tenant',
@@ -596,14 +612,25 @@ async function handleCreateEscrow(e) {
     escrows.push(newEscrow);
     saveLocalEscrows(escrows);
 
-    alert('Escrow initialized successfully on-chain and registered locally!');
+    // Notify backend
+    try {
+      await fetch(`${BACKEND_URL}/api/escrows`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newEscrow)
+      });
+    } catch (e) {
+      console.warn('Backend notification failed:', e);
+    }
+
+    showToast(`Escrow initialized successfully! Lease ID: ${leaseIdStr}`, 'success');
     formCreate.reset();
     loadDashboardEscrows();
-    loadEscrow(contractAddress);
+    loadEscrow(leaseIdStr);
     updateWalletBalance();
   } catch (err) {
     console.error('Escrow initialization failed:', err);
-    alert(`Failed to initialize escrow: ${err.message}`);
+    showToast(`Failed to initialize escrow: ${getErrorMessage(err)}`, 'error');
   } finally {
     btnSubmitCreate.disabled = false;
     btnSubmitCreate.textContent = 'INITIALIZE ESCROW ON-CHAIN';
@@ -611,7 +638,7 @@ async function handleCreateEscrow(e) {
 }
 
 async function loadEscrow(address) {
-  activeEscrowAddress = address;
+  activeEscrowAddress = address; // Storing Lease ID string in activeEscrowAddress
   activeEscrowDetailsPanel.classList.add('hidden');
   
   const manageErrorContainer = document.getElementById('manage-error-container');
@@ -620,30 +647,56 @@ async function loadEscrow(address) {
   }
 
   try {
+    const leaseId = BigInt(address);
+    const leaseIdVal = nativeToScVal(leaseId, { type: 'u64' });
+
     // 1. Fetch metadata from local storage
     const escrows = getLocalEscrows();
-    let metadata = escrows.find(e => e.address === address);
+    let metadata = escrows.find(e => e.leaseId === address);
     if (!metadata) {
       metadata = {
         tenantName: 'Tenant',
         landlordName: 'Landlord',
-        arbitratorName: 'Arbitrator',
+        arbitratorName: 'Delhi Housing Authority',
         title: 'Rental Escrow',
         description: 'Security deposit'
       };
     }
 
+    const contractId = 'CAEU7RHIOMDWODUF7VVFVXPDE7PKO4HY7ERT7KKFN3MBTUW2JAWVUM6X';
+
     // 2. Fetch state on-chain via simulation
-    const tenantAddr = await simulateCall(address, 'get_tenant');
-    const landlordAddr = await simulateCall(address, 'get_landlord');
-    const arbitratorAddr = await simulateCall(address, 'get_arbitrator');
-    const amountVal = Number(await simulateCall(address, 'get_amount'));
-    const isFunded = await simulateCall(address, 'is_funded');
-    const status = await simulateCall(address, 'get_status'); // 0=Created, 1=Active, 2=Disputed, 3=Released
+    const tenantAddr = await simulateCall(contractId, 'get_tenant', [leaseIdVal]);
+    const landlordAddr = await simulateCall(contractId, 'get_landlord', [leaseIdVal]);
+    const arbitratorAddr = await simulateCall(contractId, 'get_arbitrator', [leaseIdVal]);
+    const amountVal = Number(await simulateCall(contractId, 'get_amount', [leaseIdVal]));
+    const isFunded = await simulateCall(contractId, 'is_funded', [leaseIdVal]);
+    const status = await simulateCall(contractId, 'get_status', [leaseIdVal]); // 0=Created, 1=Active, 2=Disputed, 3=Released
+
+    // Fetch proposals
+    let tenantProposalVal = null;
+    let landlordProposalVal = null;
+    try {
+      tenantProposalVal = await simulateCall(contractId, 'get_proposal', [
+        leaseIdVal,
+        nativeToScVal(tenantAddr, { type: 'address' })
+      ]);
+    } catch (e) {
+      console.warn('Failed to fetch tenant proposal:', e);
+    }
+    try {
+      landlordProposalVal = await simulateCall(contractId, 'get_proposal', [
+        leaseIdVal,
+        nativeToScVal(landlordAddr, { type: 'address' })
+      ]);
+    } catch (e) {
+      console.warn('Failed to fetch landlord proposal:', e);
+    }
 
     // Update state
     activeEscrowDetails = {
-      address,
+      leaseId: address,
+      address: contractId,
       tenant: tenantAddr,
       landlord: landlordAddr,
       arbitrator: arbitratorAddr,
@@ -653,7 +706,9 @@ async function loadEscrow(address) {
       tenantName: metadata.tenantName,
       landlordName: metadata.landlordName,
       title: metadata.title,
-      description: metadata.description
+      description: metadata.description,
+      tenantProposal: tenantProposalVal,
+      landlordProposal: landlordProposalVal
     };
 
     // Update UI Elements
@@ -664,7 +719,12 @@ async function loadEscrow(address) {
     detailLandlord.textContent = `${landlordAddr.slice(0, 8)}...${landlordAddr.slice(-6)}`;
     detailLandlordName.textContent = activeEscrowDetails.landlordName;
     detailAmount.textContent = `${amountVal} XLM`;
-    detailContractAddress.textContent = `${address.slice(0, 10)}...${address.slice(-8)}`;
+    detailContractAddress.textContent = `${contractId.slice(0, 10)}...${contractId.slice(-8)}`;
+
+    const detailLeaseId = document.getElementById('detail-lease-id');
+    if (detailLeaseId) {
+      detailLeaseId.textContent = address;
+    }
 
     // Set slider range limits
     rangeSplit.max = amountVal.toString();
@@ -689,14 +749,14 @@ async function loadEscrow(address) {
       const manageErrorAddr = document.getElementById('manage-error-address');
       const manageErrorMsg = document.getElementById('manage-error-msg');
       if (manageErrorAddr) {
-        manageErrorAddr.textContent = address;
+        manageErrorAddr.textContent = `Lease ID: ${address}`;
       }
       if (manageErrorMsg) {
-        manageErrorMsg.textContent = err.message;
+        manageErrorMsg.textContent = getErrorMessage(err);
       }
       manageErrorContainer.classList.remove('hidden');
     } else {
-      alert(`Failed to load escrow from Soroban chain: ${err.message}. Ensure it is initialized.`);
+      showToast(`Failed to load escrow from Soroban chain: ${getErrorMessage(err)}. Ensure it is initialized.`, 'error');
     }
   }
 }
@@ -720,13 +780,97 @@ function updateStatusVisuals(status, isFunded) {
     detailStatusBadge.textContent = 'ACTIVE / LOCKED';
     detailStatusBadge.className = 'badge-status status-active';
     actionsActive.classList.remove('hidden');
+
+    // Handle proposals display and submission lock
+    const banner = document.getElementById('proposal-status-banner');
+    const submitBtn = document.getElementById('btn-propose-split');
+    const slider = document.getElementById('range-split');
+
+    if (banner && submitBtn && slider) {
+      banner.classList.add('hidden');
+      banner.className = 'info-banner';
+      submitBtn.disabled = false;
+      submitBtn.style.opacity = '1';
+      submitBtn.textContent = 'SUBMIT RELEASE PROPOSAL';
+      slider.disabled = false;
+
+      const tenantProposal = activeEscrowDetails.tenantProposal;
+      const landlordProposal = activeEscrowDetails.landlordProposal;
+
+      const hasTenantProposed = !!tenantProposal;
+      const hasLandlordProposed = !!landlordProposal;
+
+      let tenantText = '';
+      if (hasTenantProposed) {
+        const tAmt = Number(tenantProposal[0]);
+        const lAmt = Number(tenantProposal[1]);
+        tenantText = `Tenant proposed: Tenant ${tAmt} XLM / Landlord ${lAmt} XLM`;
+      }
+
+      let landlordText = '';
+      if (hasLandlordProposed) {
+        const tAmt = Number(landlordProposal[0]);
+        const lAmt = Number(landlordProposal[1]);
+        landlordText = `Landlord proposed: Tenant ${tAmt} XLM / Landlord ${lAmt} XLM`;
+      }
+
+      const isCurrentUserTenant = userAddress === activeEscrowDetails.tenant;
+      const isCurrentUserLandlord = userAddress === activeEscrowDetails.landlord;
+
+      const hasCurrentUserProposed = (isCurrentUserTenant && hasTenantProposed) || (isCurrentUserLandlord && hasLandlordProposed);
+      const hasOtherPartyProposed = (isCurrentUserTenant && hasLandlordProposed) || (isCurrentUserLandlord && hasTenantProposed);
+
+      if (hasTenantProposed || hasLandlordProposed) {
+        banner.classList.remove('hidden');
+        
+        let message = '';
+        if (hasTenantProposed && hasLandlordProposed) {
+          // Both proposed but they didn't match (otherwise status would be 3)
+          message = `<strong>⚠️ Proposals Conflict:</strong><br>${tenantText}<br>${landlordText}<br><span style="margin-top:0.35rem; display:block; font-size:0.75rem; color:var(--text-secondary);">If you cannot reach an agreement, click RAISE DISPUTE below to involve Delhi Housing Authority.</span>`;
+          banner.className = 'info-banner error';
+          
+          // Disable both since both already proposed
+          submitBtn.disabled = true;
+          submitBtn.style.opacity = '0.5';
+          submitBtn.textContent = 'PROPOSAL SUBMITTED';
+          slider.disabled = true;
+        } else if (hasCurrentUserProposed) {
+          // Only current user proposed
+          const currentProposal = isCurrentUserTenant ? tenantProposal : landlordProposal;
+          const tAmt = Number(currentProposal[0]);
+          const lAmt = Number(currentProposal[1]);
+          message = `<strong>ℹ️ Waiting for other party:</strong> You proposed: Tenant ${tAmt} XLM / Landlord ${lAmt} XLM. Waiting for matching proposal from ${isCurrentUserTenant ? 'Landlord' : 'Tenant'}.`;
+          banner.className = 'info-banner warning';
+          
+          submitBtn.disabled = true;
+          submitBtn.style.opacity = '0.5';
+          submitBtn.textContent = 'WAITING FOR MATCH';
+          slider.disabled = true;
+        } else if (hasOtherPartyProposed) {
+          // Other party proposed, current user has NOT proposed
+          const otherProposal = isCurrentUserTenant ? landlordProposal : tenantProposal;
+          const tAmt = Number(otherProposal[0]);
+          const lAmt = Number(otherProposal[1]);
+          message = `<strong>💡 Offer Received:</strong> ${isCurrentUserTenant ? 'Landlord' : 'Tenant'} proposed a split:<br><strong>Tenant ${tAmt} XLM / Landlord ${lAmt} XLM</strong>.<br><span style="margin-top:0.35rem; display:block; font-size:0.75rem; color:var(--text-secondary);">Drag your slider to match this split and click submit to release instantly.</span>`;
+          banner.className = 'info-banner success';
+          
+          // Set slider to match automatically to help user!
+          slider.value = tAmt.toString();
+          document.getElementById('lbl-split-tenant').textContent = `${tAmt} XLM`;
+          document.getElementById('lbl-split-landlord').textContent = `${activeEscrowDetails.amount - tAmt} XLM`;
+        }
+        
+        banner.innerHTML = `<div style="text-align: left; font-size: 0.85rem; line-height: 1.5; width: 100%;">${message}</div>`;
+      }
+    }
   } else if (status === 2) {
     detailStatusBadge.textContent = 'DISPUTED';
     detailStatusBadge.className = 'badge-status status-disputed';
     actionsDisputed.classList.remove('hidden');
 
     // Load dispute reason
-    simulateCall(activeEscrowAddress, 'get_dispute_reason').then(reason => {
+    const leaseId = BigInt(activeEscrowAddress);
+    simulateCall(activeEscrowDetails.address, 'get_dispute_reason', [nativeToScVal(leaseId, { type: 'u64' })]).then(reason => {
       lblDisputeReason.textContent = `Reason: "${reason}"`;
     }).catch(() => {
       lblDisputeReason.textContent = 'Reason: No description provided';
@@ -756,25 +900,33 @@ async function fundEscrow() {
   btnFundEscrow.textContent = 'EXECUTING ON-CHAIN TRANSFER...';
 
   try {
-    // Call contract.fund()
-    await executeTx(activeEscrowAddress, 'fund');
+    const leaseId = BigInt(activeEscrowAddress);
+    // Call contract.fund(lease_id)
+    await executeTx(activeEscrowDetails.address, 'fund', [nativeToScVal(leaseId, { type: 'u64' })]);
 
     // Update local database status
     const escrows = getLocalEscrows();
-    const escrow = escrows.find(e => e.address === activeEscrowAddress);
+    const escrow = escrows.find(e => e.leaseId === activeEscrowAddress);
     if (escrow) {
       escrow.status = 'Active';
       escrow.history.push({ timestamp: new Date().toISOString(), event: 'Escrow Funded' });
       saveLocalEscrows(escrows);
     }
 
-    alert('Escrow funded successfully on-chain! Funds locked in smart contract.');
+    // Notify backend
+    try {
+      await fetch(`${BACKEND_URL}/api/escrows/${activeEscrowAddress}/fund`, { method: 'POST' });
+    } catch (e) {
+      console.warn('Backend notification failed:', e);
+    }
+
+    showToast('Escrow funded successfully on-chain! Funds locked in smart contract.', 'success');
     loadEscrow(activeEscrowAddress);
     loadDashboardEscrows();
     updateWalletBalance();
   } catch (err) {
     console.error('Funding failed:', err);
-    alert(`Funding transaction failed: ${err.message}`);
+    showToast(`Funding transaction failed: ${getErrorMessage(err)}`, 'error');
   } finally {
     btnFundEscrow.disabled = false;
     btnFundEscrow.textContent = originalText;
@@ -792,20 +944,24 @@ async function proposeSplit() {
   btnProposeSplit.textContent = 'SUBMITTING RELEASE PROPOSAL...';
 
   try {
-    // Call propose_release
+    const leaseId = BigInt(activeEscrowAddress);
+    const leaseIdVal = nativeToScVal(leaseId, { type: 'u64' });
+
+    // Call propose_release(lease_id, caller, tenant_amount, landlord_amount)
     const args = [
+      leaseIdVal,
       nativeToScVal(userAddress, { type: 'address' }),
       nativeToScVal(BigInt(tenantAmount), { type: 'i128' }),
       nativeToScVal(BigInt(landlordAmount), { type: 'i128' })
     ];
 
-    await executeTx(activeEscrowAddress, 'propose_release', args);
+    await executeTx(activeEscrowDetails.address, 'propose_release', args);
 
     // Get contract status after call to see if it triggered matching split release
-    const currentStatus = await simulateCall(activeEscrowAddress, 'get_status');
+    const currentStatus = await simulateCall(activeEscrowDetails.address, 'get_status', [leaseIdVal]);
     
     const escrows = getLocalEscrows();
-    const escrow = escrows.find(e => e.address === activeEscrowAddress);
+    const escrow = escrows.find(e => e.leaseId === activeEscrowAddress);
     if (escrow) {
       if (currentStatus === 3) {
         escrow.status = 'Released';
@@ -813,14 +969,36 @@ async function proposeSplit() {
           timestamp: new Date().toISOString(), 
           event: `Escrow Released! (Tenant: ${tenantAmount} XLM, Landlord: ${landlordAmount} XLM)` 
         });
-        alert('Agreement reached! Splits match. Escrow released successfully!');
+        showToast('Agreement reached! Splits match. Escrow released successfully!', 'success');
+
+        // Notify backend release
+        try {
+          await fetch(`${BACKEND_URL}/api/escrows/${activeEscrowAddress}/release`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tenantAmount, landlordAmount })
+          });
+        } catch (e) {
+          console.warn('Backend notification failed:', e);
+        }
       } else {
         const callerRole = userAddress === escrow.tenant ? 'Tenant' : 'Landlord';
         escrow.history.push({ 
           timestamp: new Date().toISOString(), 
           event: `${callerRole} proposed release split: Tenant: ${tenantAmount} XLM, Landlord: ${landlordAmount} XLM` 
         });
-        alert(`Split proposal submitted! Waiting for matching proposal from the other party.`);
+        showToast(`Split proposal submitted! Waiting for matching proposal from the other party.`, 'info');
+
+        // Notify backend propose
+        try {
+          await fetch(`${BACKEND_URL}/api/escrows/${activeEscrowAddress}/propose`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ caller: userAddress, tenantAmount, landlordAmount })
+          });
+        } catch (e) {
+          console.warn('Backend notification failed:', e);
+        }
       }
       saveLocalEscrows(escrows);
     }
@@ -830,7 +1008,7 @@ async function proposeSplit() {
     updateWalletBalance();
   } catch (err) {
     console.error('Proposal split failed:', err);
-    alert(`Transaction failed: ${err.message}`);
+    showToast(`Transaction failed: ${getErrorMessage(err)}`, 'error');
   } finally {
     btnProposeSplit.disabled = false;
     btnProposeSplit.textContent = originalText;
@@ -846,17 +1024,19 @@ async function declareDispute() {
   btnDispute.textContent = 'RAISING DISPUTE...';
 
   try {
-    // Call contract.dispute
+    const leaseId = BigInt(activeEscrowAddress);
+    // Call contract.dispute(lease_id, caller, reason)
     const args = [
+      nativeToScVal(leaseId, { type: 'u64' }),
       nativeToScVal(userAddress, { type: 'address' }),
       nativeToScVal(reason, { type: 'string' })
     ];
 
-    await executeTx(activeEscrowAddress, 'dispute', args);
+    await executeTx(activeEscrowDetails.address, 'dispute', args);
 
     // Update local database status
     const escrows = getLocalEscrows();
-    const escrow = escrows.find(e => e.address === activeEscrowAddress);
+    const escrow = escrows.find(e => e.leaseId === activeEscrowAddress);
     if (escrow) {
       const callerRole = userAddress === escrow.tenant ? 'Tenant' : 'Landlord';
       escrow.status = 'Disputed';
@@ -867,13 +1047,24 @@ async function declareDispute() {
       saveLocalEscrows(escrows);
     }
 
-    alert('Dispute successfully declared on-chain. Arbitrator has been notified.');
+    // Notify backend
+    try {
+      await fetch(`${BACKEND_URL}/api/escrows/${activeEscrowAddress}/dispute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ caller: userAddress, reason })
+      });
+    } catch (e) {
+      console.warn('Backend notification failed:', e);
+    }
+
+    showToast('Dispute successfully declared on-chain. Arbitrator has been notified.', 'success');
     inputDisputeReason.value = '';
     loadEscrow(activeEscrowAddress);
     loadDashboardEscrows();
   } catch (err) {
     console.error('Dispute failed:', err);
-    alert(`Dispute transaction failed: ${err.message}`);
+    showToast(`Dispute transaction failed: ${getErrorMessage(err)}`, 'error');
   } finally {
     btnDispute.disabled = false;
     btnDispute.textContent = originalText;
@@ -890,17 +1081,19 @@ async function resolveDispute() {
   btnResolveDispute.textContent = 'RESOLVING DISPUTE...';
 
   try {
-    // Call contract.resolve_dispute
+    const leaseId = BigInt(activeEscrowAddress);
+    // Call contract.resolve_dispute(lease_id, tenant_amount, landlord_amount)
     const args = [
+      nativeToScVal(leaseId, { type: 'u64' }),
       nativeToScVal(BigInt(tenantAmount), { type: 'i128' }),
       nativeToScVal(BigInt(landlordAmount), { type: 'i128' })
     ];
 
-    await executeTx(activeEscrowAddress, 'resolve_dispute', args);
+    await executeTx(activeEscrowDetails.address, 'resolve_dispute', args);
 
     // Update local database status
     const escrows = getLocalEscrows();
-    const escrow = escrows.find(e => e.address === activeEscrowAddress);
+    const escrow = escrows.find(e => e.leaseId === activeEscrowAddress);
     if (escrow) {
       escrow.status = 'Released (Disputed)';
       escrow.history.push({ 
@@ -910,13 +1103,24 @@ async function resolveDispute() {
       saveLocalEscrows(escrows);
     }
 
-    alert('Dispute resolved by arbitrator. Funds distributed!');
+    // Notify backend
+    try {
+      await fetch(`${BACKEND_URL}/api/escrows/${activeEscrowAddress}/resolve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantAmount, landlordAmount })
+      });
+    } catch (e) {
+      console.warn('Backend notification failed:', e);
+    }
+
+    showToast('Dispute resolved by arbitrator. Funds distributed!', 'success');
     loadEscrow(activeEscrowAddress);
     loadDashboardEscrows();
     updateWalletBalance();
   } catch (err) {
     console.error('Resolution failed:', err);
-    alert(`Resolution transaction failed: ${err.message}`);
+    showToast(`Resolution transaction failed: ${getErrorMessage(err)}`, 'error');
   } finally {
     btnResolveDispute.disabled = false;
     btnResolveDispute.textContent = originalText;
@@ -953,4 +1157,58 @@ window.addEventListener('load', () => {
     console.log('OVERFLOW_DOC:', JSON.stringify(overflowingDoc));
   }, 1000);
 });
+
+// Safely parses error strings/objects to avoid showing raw [object Object] errors in UI
+function getErrorMessage(err) {
+  if (!err) return 'Unknown error';
+  if (typeof err === 'string') return err;
+  if (err.error && typeof err.error === 'string') return err.error;
+  if (err.message && typeof err.message === 'string') return err.message;
+  if (err.message) return String(err.message);
+  try {
+    const str = JSON.stringify(err);
+    if (str === '{}') return String(err);
+    return str;
+  } catch (e) {
+    return String(err);
+  }
+}
+
+// Helper to display Web3-style premium toast notifications
+function showToast(message, type = 'success') {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  
+  let iconSVG = '';
+  if (type === 'success') {
+    iconSVG = `<svg viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+  } else if (type === 'error') {
+    iconSVG = `<svg viewBox="0 0 24 24" fill="none" stroke="var(--color-error)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
+  } else {
+    iconSVG = `<svg viewBox="0 0 24 24" fill="none" stroke="var(--color-info)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+  }
+  
+  toast.innerHTML = `
+    <span class="toast-icon">${iconSVG}</span>
+    <span class="toast-message">${message}</span>
+  `;
+  
+  container.appendChild(toast);
+  
+  // Trigger animation
+  setTimeout(() => {
+    toast.classList.add('show');
+  }, 10);
+  
+  // Remove after 4 seconds
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => {
+      toast.remove();
+    }, 300);
+  }, 4000);
+}
 

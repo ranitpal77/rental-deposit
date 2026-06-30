@@ -34,9 +34,9 @@ By leveraging Stellar's protocol-level primitives and Soroban's smart contractin
 ---
 
 ## 🔗 Deployed Smart Contract Link
-**[View on Stellar Lab](https://lab.stellar.org/r/testnet/contract/CBETXXIY2B2IYXVYGEYQG2EH3XS4QIZVI47MHPGGMUOXURW2CHU32I7M)**
+**[View on Stellar Lab](https://lab.stellar.org/r/testnet/contract/CAEU7RHIOMDWODUF7VVFVXPDE7PKO4HY7ERT7KKFN3MBTUW2JAWVUM6X)**
 
-**[View on Stellar Expert](https://stellar.expert/explorer/testnet/contract/CBETXXIY2B2IYXVYGEYQG2EH3XS4QIZVI47MHPGGMUOXURW2CHU32I7M)**
+**[View on Stellar Expert](https://stellar.expert/explorer/testnet/contract/CAEU7RHIOMDWODUF7VVFVXPDE7PKO4HY7ERT7KKFN3MBTUW2JAWVUM6X)**
 
 ---
 
@@ -44,10 +44,10 @@ By leveraging Stellar's protocol-level primitives and Soroban's smart contractin
 `GDFLHVAXB37QVIPV7LWLEIAPHQ7TYXG36LXX3CHMBFEQA67GDB44QLPI`
 
 ## 🆔 Deployed Contract ID
-`CBETXXIY2B2IYXVYGEYQG2EH3XS4QIZVI47MHPGGMUOXURW2CHU32I7M`
+`CAEU7RHIOMDWODUF7VVFVXPDE7PKO4HY7ERT7KKFN3MBTUW2JAWVUM6X`
 
 ## 🧾 Transaction Hash
-`96f44ffd47642c2ec2f53ca26207ebf1ee8f4c2ae8a02e4cbd90830cf27037e9`
+`8a929657badf930ec7b8e840301762261fc1848e9d6643c3076155c3ece59604`
 
 ---
 
@@ -239,29 +239,61 @@ npm run dev
 
 ### 🔄 5. End-to-End Walkthrough (How to Play)
 
-1. Open **`http://localhost:3000`** in your browser.
-2. Click **Connect Wallet** and authorize Freighter. Your active account's address will be shown in the navigation bar.
-3. **Step A: Initialize a Lease (Tenant)**
+Open **`http://localhost:3000`** in your browser. Click **Connect Wallet** and authorize Freighter. Your active account's address will be shown in the navigation bar.
+
+#### 🏁 Core Escrow Setup (Common to Both Examples)
+1. **Initialize Lease (as Tenant - Account 1):**
    - Click the **Create Escrow** tab.
-   - Enter a **Lease Title** (e.g., "Apartment 5C - City Center") and **Description**.
-   - Input the **Landlord Public Key** (Account 2 address) and **Arbitrator Public Key** (Account 3 address).
-   - Set the **Deposit Amount** in XLM.
-   - Input your **Deployed Contract ID** (from Step 3).
-   - Click **Initialize Escrow**. The backend server logs will output a notification alerting the landlord.
-4. **Step B: Fund the Escrow (Tenant)**
-   - Switch to the **Manage Escrow** tab and search for your Contract ID.
-   - Click **Fund Escrow**. Freighter will prompt you to sign the transaction. 
-   - Once confirmed on-chain, the status changes to `ACTIVE` and the funds are locked in the smart contract.
-5. **Step C: Move-out Splitting Proposals (Tenant & Landlord)**
-   - When the lease ends, either party can propose how to split the deposit.
-   - Switch accounts in Freighter to act as the Landlord, load the escrow, and use the slider to propose a refund split.
-   - Switch accounts back to the Tenant to propose a match.
-   - Once both splits match, the funds are instantly released on-chain and sent to both parties.
-6. **Step D: Arbitration (Dispute Backstop)**
-   - If agreement cannot be reached, the Tenant or Landlord can fill in a reason and click **Declare Dispute**.
-   - The status updates to `DISPUTED`.
-   - Switch Freighter accounts to the **Arbitrator** (Account 3). The arbitrator interface will appear under the Manage tab.
-   - Set the final split slider and click **Resolve Dispute** to release the funds accordingly.
+   - Enter a title (e.g. "Apartment 4B - Greenview Heights") and description.
+   - Enter the Landlord address (Account 2) and Arbitrator address (Account 3).
+   - Input the deposit amount (e.g. `100 XLM`).
+   - Click **INITIALIZE ESCROW ON-CHAIN** and sign the Freighter transaction. 
+   - Copy the generated **Lease ID** from the green success toast notification (e.g., `8172930419203810`).
+2. **Fund Escrow (as Tenant - Account 1):**
+   - Switch to the **Manage Escrow** tab, paste the **Lease ID**, and click **LOAD**.
+   - Click **FUND ESCROW NOW (DEPOSIT)** and approve the transaction in Freighter.
+   - Once completed, the status changes to `ACTIVE / LOCKED`.
+
+---
+
+#### 🤝 EXAMPLE 1: Mutual Release Agreement (No Arbitrator/Account 3 Needed)
+*This example demonstrates a peaceful move-out where tenant and landlord coordinate splits directly.*
+
+1. **Tenant Proposes Split (as Tenant - Account 1):**
+   - Under **PROPOSE RELEASE SPLIT**, drag the slider to **TO TENANT: 75 XLM** and **TO LANDLORD: 25 XLM** (meaning: the Tenant requests 75 XLM back, leaving 25 XLM for paint/repairs).
+   - Click **SUBMIT RELEASE PROPOSAL** and sign.
+   - The status remains `ACTIVE / LOCKED` and a banner states: `"Waiting for other party..."` (multiple submissions are locked for this account).
+2. **Landlord Reconnects (as Landlord - Account 2):**
+   - Switch your Freighter account to **Account 2**.
+   - Click **CONNECT WALLET** at the top of the website so it registers the Landlord address.
+   - Go to **MANAGE ESCROW** and load the same **Lease ID**.
+   - The interface shows: `"Offer Received: Tenant proposed: Tenant 75 XLM / Landlord 25 XLM."` The slider automatically snaps to 75/25.
+3. **Landlord Confirms split:**
+   - Leave the slider at the snapped 75/25 split.
+   - Click **SUBMIT RELEASE PROPOSAL** and sign.
+   - **Payout:** Contract detects matching proposals, executes payouts immediately (75 XLM to Account 1, 25 XLM to Account 2), and sets status to `RELEASED / RESOLVED SUCCESSFULLY`.
+
+---
+
+#### ⚖️ EXAMPLE 2: Disputed Settlement (Arbitrator/Account 3 Resolves Split)
+*This example demonstrates a conflict where landlord and tenant cannot agree, requiring the arbitrator to divide funds.*
+
+1. **Setup & Fund:**
+   - Repeat the **Core Escrow Setup** steps above to initialize and fund a new lease of `100 XLM`.
+2. **Conflicting splits:**
+   - **Tenant Proposes (Account 1):** Tenant loads the Lease ID, drags slider to **90/10**, and submits.
+   - **Landlord Proposes (Account 2):** Landlord reconnects, loads same Lease ID, drags slider to **30/70**, and submits.
+   - **Conflict State:** Since proposals conflict (90/10 vs 30/70), status remains `ACTIVE / LOCKED`, the sliders lock, and a red warning banner lists both conflicting proposals.
+3. **Raise a Dispute:**
+   - Under **RAISE DISPUTE**, Tenant or Landlord types a reason (e.g. "Landlord claiming painting damages that do not exist") and clicks **RAISE DISPUTE**.
+   - On-chain status locks to **DISPUTED**.
+4. **Arbitrator Verdict (as Arbitrator - Account 3):**
+   - Switch Freighter account to **Account 3** (Arbitrator).
+   - Click **CONNECT WALLET** at the top of the website.
+   - Go to **MANAGE ESCROW** and load the **Lease ID**.
+   - The Arbitrator-only decision panel reveals showing the dispute reason.
+   - Set the final split (e.g. **TO TENANT: 60 XLM** / **TO LANDLORD: 40 XLM**) and click **EXECUTE ARBITRATOR RESOLUTION**.
+   - **Payout:** The contract transfers the designated splits (60 XLM to Account 1, 40 XLM to Account 2) and resolves the escrow.
 
 ---
 

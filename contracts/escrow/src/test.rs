@@ -34,25 +34,25 @@ fn test_initialize_and_getters() {
     let env = Env::default();
     let (client, tenant, landlord, arbitrator, token_address, _token_client) = setup_test(&env);
 
-    client.initialize(&tenant, &landlord, &arbitrator, &token_address, &500);
+    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &500);
 
-    assert_eq!(client.get_tenant(), tenant);
-    assert_eq!(client.get_landlord(), landlord);
-    assert_eq!(client.get_arbitrator(), arbitrator);
-    assert_eq!(client.get_token(), token_address);
-    assert_eq!(client.get_amount(), 500);
-    assert_eq!(client.is_funded(), false);
-    assert_eq!(client.get_status(), 0); // Created
+    assert_eq!(client.get_tenant(&1u64), tenant);
+    assert_eq!(client.get_landlord(&1u64), landlord);
+    assert_eq!(client.get_arbitrator(&1u64), arbitrator);
+    assert_eq!(client.get_token(&1u64), token_address);
+    assert_eq!(client.get_amount(&1u64), 500);
+    assert_eq!(client.is_funded(&1u64), false);
+    assert_eq!(client.get_status(&1u64), 0); // Created
 }
 
 #[test]
-#[should_panic(expected = "Already initialized")]
+#[should_panic(expected = "Lease ID already exists")]
 fn test_cannot_double_initialize() {
     let env = Env::default();
     let (client, tenant, landlord, arbitrator, token_address, _token_client) = setup_test(&env);
 
-    client.initialize(&tenant, &landlord, &arbitrator, &token_address, &500);
-    client.initialize(&tenant, &landlord, &arbitrator, &token_address, &500);
+    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &500);
+    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &500);
 }
 
 #[test]
@@ -61,7 +61,7 @@ fn test_cannot_initialize_with_zero_amount() {
     let env = Env::default();
     let (client, tenant, landlord, arbitrator, token_address, _token_client) = setup_test(&env);
 
-    client.initialize(&tenant, &landlord, &arbitrator, &token_address, &0);
+    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &0);
 }
 
 #[test]
@@ -70,17 +70,17 @@ fn test_fund() {
     let (client, tenant, landlord, arbitrator, token_address, token_client) = setup_test(&env);
 
     let amount = 500;
-    client.initialize(&tenant, &landlord, &arbitrator, &token_address, &amount);
+    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &amount);
 
     assert_eq!(token_client.balance(&tenant), 1000);
     assert_eq!(token_client.balance(&client.address), 0);
 
-    client.fund();
+    client.fund(&1u64);
 
     assert_eq!(token_client.balance(&tenant), 500);
     assert_eq!(token_client.balance(&client.address), 500);
-    assert_eq!(client.is_funded(), true);
-    assert_eq!(client.get_status(), 1); // Active
+    assert_eq!(client.is_funded(&1u64), true);
+    assert_eq!(client.get_status(&1u64), 1); // Active
 }
 
 #[test]
@@ -89,9 +89,9 @@ fn test_cannot_fund_twice() {
     let env = Env::default();
     let (client, tenant, landlord, arbitrator, token_address, _token_client) = setup_test(&env);
 
-    client.initialize(&tenant, &landlord, &arbitrator, &token_address, &500);
-    client.fund();
-    client.fund();
+    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &500);
+    client.fund(&1u64);
+    client.fund(&1u64);
 }
 
 #[test]
@@ -99,23 +99,23 @@ fn test_mutual_release_perfect_agreement() {
     let env = Env::default();
     let (client, tenant, landlord, arbitrator, token_address, token_client) = setup_test(&env);
 
-    client.initialize(&tenant, &landlord, &arbitrator, &token_address, &500);
-    client.fund();
+    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &500);
+    client.fund(&1u64);
 
     // Tenant proposes split: 400 to tenant, 100 to landlord
-    client.propose_release(&tenant, &400, &100);
-    assert_eq!(client.get_status(), 1); // Still Active
-    assert_eq!(client.get_proposal(&tenant), Some((400, 100)));
+    client.propose_release(&1u64, &tenant, &400, &100);
+    assert_eq!(client.get_status(&1u64), 1); // Still Active
+    assert_eq!(client.get_proposal(&1u64, &tenant), Some((400, 100)));
 
     // Landlord proposes different split: 300 to tenant, 200 to landlord
-    client.propose_release(&landlord, &300, &200);
-    assert_eq!(client.get_status(), 1); // Still Active because splits do not match
+    client.propose_release(&1u64, &landlord, &300, &200);
+    assert_eq!(client.get_status(&1u64), 1); // Still Active because splits do not match
 
     // Landlord changes proposal to match tenant
-    client.propose_release(&landlord, &400, &100);
+    client.propose_release(&1u64, &landlord, &400, &100);
 
     // The release should be executed
-    assert_eq!(client.get_status(), 3); // Released
+    assert_eq!(client.get_status(&1u64), 3); // Released
     assert_eq!(token_client.balance(&tenant), 500 + 400); // 500 remaining + 400 released
     assert_eq!(token_client.balance(&landlord), 100); // 0 initial + 100 released
     assert_eq!(token_client.balance(&client.address), 0);
@@ -127,10 +127,10 @@ fn test_propose_release_invalid_sum() {
     let env = Env::default();
     let (client, tenant, landlord, arbitrator, token_address, _token_client) = setup_test(&env);
 
-    client.initialize(&tenant, &landlord, &arbitrator, &token_address, &500);
-    client.fund();
+    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &500);
+    client.fund(&1u64);
 
-    client.propose_release(&tenant, &300, &100); // sums to 400, not 500
+    client.propose_release(&1u64, &tenant, &300, &100); // sums to 400, not 500
 }
 
 #[test]
@@ -138,20 +138,20 @@ fn test_dispute_and_arbitrator_resolution() {
     let env = Env::default();
     let (client, tenant, landlord, arbitrator, token_address, token_client) = setup_test(&env);
 
-    client.initialize(&tenant, &landlord, &arbitrator, &token_address, &500);
-    client.fund();
+    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &500);
+    client.fund(&1u64);
 
     // Tenant declares dispute
     let reason = soroban_sdk::String::from_str(&env, "Property had pre-existing damage, landlord claims deposit");
-    client.dispute(&tenant, &reason);
+    client.dispute(&1u64, &tenant, &reason);
 
-    assert_eq!(client.get_status(), 2); // Disputed
-    assert_eq!(client.get_dispute_reason(), reason);
+    assert_eq!(client.get_status(&1u64), 2); // Disputed
+    assert_eq!(client.get_dispute_reason(&1u64), reason);
 
     // Arbitrator resolves split: 350 to tenant, 150 to landlord
-    client.resolve_dispute(&350, &150);
+    client.resolve_dispute(&1u64, &350, &150);
 
-    assert_eq!(client.get_status(), 3); // Released
+    assert_eq!(client.get_status(&1u64), 3); // Released
     assert_eq!(token_client.balance(&tenant), 500 + 350); // 500 remaining + 350 released
     assert_eq!(token_client.balance(&landlord), 150);
     assert_eq!(token_client.balance(&client.address), 0);
@@ -163,8 +163,22 @@ fn test_arbitrator_cannot_resolve_if_not_disputed() {
     let env = Env::default();
     let (client, tenant, landlord, arbitrator, token_address, _token_client) = setup_test(&env);
 
-    client.initialize(&tenant, &landlord, &arbitrator, &token_address, &500);
-    client.fund();
+    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &500);
+    client.fund(&1u64);
 
-    client.resolve_dispute(&350, &150);
+    client.resolve_dispute(&1u64, &350, &150);
+}
+
+#[test]
+fn test_multiple_leases_are_isolated() {
+    let env = Env::default();
+    let (client, tenant, landlord, arbitrator, token_address, _token_client) = setup_test(&env);
+
+    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &500);
+    client.initialize(&2u64, &tenant, &landlord, &arbitrator, &token_address, &300);
+
+    assert_eq!(client.get_amount(&1u64), 500);
+    assert_eq!(client.get_amount(&2u64), 300);
+    assert_eq!(client.is_funded(&1u64), false);
+    assert_eq!(client.is_funded(&2u64), false);
 }

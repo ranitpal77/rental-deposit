@@ -24,20 +24,21 @@ app.get('/api/escrows', (req, res) => {
   res.json(escrows);
 });
 
-app.get('/api/escrows/:address', (req, res) => {
-  const escrow = escrows.find(e => e.address === req.params.address);
+app.get('/api/escrows/:leaseId', (req, res) => {
+  const escrow = escrows.find(e => e.leaseId.toString() === req.params.leaseId);
   if (!escrow) return res.status(404).json({ error: 'Escrow not found' });
   res.json(escrow);
 });
 
 app.post('/api/escrows', (req, res) => {
-  const { address, tenant, tenantName, landlord, landlordName, arbitrator, arbitratorName, amount, title, description } = req.body;
+  const { leaseId, address, tenant, tenantName, landlord, landlordName, arbitrator, arbitratorName, amount, title, description } = req.body;
   
-  if (!address || !tenant || !landlord || !amount) {
+  if (!leaseId || !address || !tenant || !landlord || !amount) {
     return res.status(400).json({ error: 'Missing required escrow fields' });
   }
 
   const newEscrow = {
+    leaseId,
     address,
     tenant,
     tenantName: tenantName || 'Tenant',
@@ -57,28 +58,28 @@ app.post('/api/escrows', (req, res) => {
   escrows.push(newEscrow);
   
   // Notify landlord of initialization
-  sendNotification(newEscrow.landlordName, 'Landlord', `A new rental security deposit escrow has been initialized for you by ${newEscrow.tenantName}. Escrow Contract: ${address}. Amount: ${amount}. Please review the terms.`);
+  sendNotification(newEscrow.landlordName, 'Landlord', `A new rental security deposit escrow has been initialized for you by ${newEscrow.tenantName}. Lease ID: ${leaseId}. Amount: ${amount}. Please review the terms.`);
 
   res.status(201).json(newEscrow);
 });
 
-app.post('/api/escrows/:address/fund', (req, res) => {
-  const escrow = escrows.find(e => e.address === req.params.address);
+app.post('/api/escrows/:leaseId/fund', (req, res) => {
+  const escrow = escrows.find(e => e.leaseId.toString() === req.params.leaseId);
   if (!escrow) return res.status(404).json({ error: 'Escrow not found' });
 
   escrow.status = 'Active';
   escrow.history.push({ timestamp: new Date().toISOString(), event: 'Escrow Funded' });
 
   // Notify landlord & tenant
-  sendNotification(escrow.landlordName, 'Landlord', `Great news! Tenant ${escrow.tenantName} has funded the security deposit of ${escrow.amount} to escrow contract ${escrow.address}. The funds are locked on-chain under mutual release rules.`);
-  sendNotification(escrow.tenantName, 'Tenant', `Your deposit of ${escrow.amount} has been successfully locked in the escrow contract ${escrow.address}.`);
+  sendNotification(escrow.landlordName, 'Landlord', `Great news! Tenant ${escrow.tenantName} has funded the security deposit of ${escrow.amount} to Lease ID ${escrow.leaseId}. The funds are locked on-chain under mutual release rules.`);
+  sendNotification(escrow.tenantName, 'Tenant', `Your deposit of ${escrow.amount} has been successfully locked in the escrow contract under Lease ID ${escrow.leaseId}.`);
 
   res.json(escrow);
 });
 
-app.post('/api/escrows/:address/propose', (req, res) => {
+app.post('/api/escrows/:leaseId/propose', (req, res) => {
   const { caller, tenantAmount, landlordAmount } = req.body;
-  const escrow = escrows.find(e => e.address === req.params.address);
+  const escrow = escrows.find(e => e.leaseId.toString() === req.params.leaseId);
   if (!escrow) return res.status(404).json({ error: 'Escrow not found' });
 
   const callerName = caller === escrow.tenant ? escrow.tenantName : escrow.landlordName;
@@ -97,9 +98,9 @@ app.post('/api/escrows/:address/propose', (req, res) => {
   res.json(escrow);
 });
 
-app.post('/api/escrows/:address/release', (req, res) => {
+app.post('/api/escrows/:leaseId/release', (req, res) => {
   const { tenantAmount, landlordAmount } = req.body;
-  const escrow = escrows.find(e => e.address === req.params.address);
+  const escrow = escrows.find(e => e.leaseId.toString() === req.params.leaseId);
   if (!escrow) return res.status(404).json({ error: 'Escrow not found' });
 
   escrow.status = 'Released';
@@ -109,15 +110,15 @@ app.post('/api/escrows/:address/release', (req, res) => {
   });
 
   // Notify both
-  sendNotification(escrow.tenantName, 'Tenant', `The escrow contract ${escrow.address} has been successfully released. You received: ${tenantAmount}.`);
-  sendNotification(escrow.landlordName, 'Landlord', `The escrow contract ${escrow.address} has been successfully released. You received: ${landlordAmount}.`);
+  sendNotification(escrow.tenantName, 'Tenant', `The escrow contract for Lease ID ${escrow.leaseId} has been successfully released. You received: ${tenantAmount}.`);
+  sendNotification(escrow.landlordName, 'Landlord', `The escrow contract for Lease ID ${escrow.leaseId} has been successfully released. You received: ${landlordAmount}.`);
 
   res.json(escrow);
 });
 
-app.post('/api/escrows/:address/dispute', (req, res) => {
+app.post('/api/escrows/:leaseId/dispute', (req, res) => {
   const { caller, reason } = req.body;
-  const escrow = escrows.find(e => e.address === req.params.address);
+  const escrow = escrows.find(e => e.leaseId.toString() === req.params.leaseId);
   if (!escrow) return res.status(404).json({ error: 'Escrow not found' });
 
   const callerName = caller === escrow.tenant ? escrow.tenantName : escrow.landlordName;
@@ -130,18 +131,18 @@ app.post('/api/escrows/:address/dispute', (req, res) => {
   });
 
   // Notify arbitrator & other party
-  sendNotification(escrow.arbitratorName, 'Arbitrator', `A dispute has been declared by the ${callerRole} (${callerName}) on escrow ${escrow.address}. Reason: "${reason}". Please investigate and resolve.`);
+  sendNotification(escrow.arbitratorName, 'Arbitrator', `A dispute has been declared by the ${callerRole} (${callerName}) on Lease ID ${escrow.leaseId}. Reason: "${reason}". Please investigate and resolve.`);
   
   const otherName = caller === escrow.tenant ? escrow.landlordName : escrow.tenantName;
   const otherRole = caller === escrow.tenant ? 'Landlord' : 'Tenant';
-  sendNotification(otherName, otherRole, `A formal dispute has been declared by ${callerName} regarding your security deposit. The arbitrator (${escrow.arbitratorName}) has been notified.`);
+  sendNotification(otherName, otherRole, `A formal dispute has been declared by ${callerName} regarding your security deposit (Lease ID: ${escrow.leaseId}). The arbitrator (${escrow.arbitratorName}) has been notified.`);
 
   res.json(escrow);
 });
 
-app.post('/api/escrows/:address/resolve', (req, res) => {
+app.post('/api/escrows/:leaseId/resolve', (req, res) => {
   const { tenantAmount, landlordAmount } = req.body;
-  const escrow = escrows.find(e => e.address === req.params.address);
+  const escrow = escrows.find(e => e.leaseId.toString() === req.params.leaseId);
   if (!escrow) return res.status(404).json({ error: 'Escrow not found' });
 
   escrow.status = 'Released (Disputed)';
@@ -151,8 +152,8 @@ app.post('/api/escrows/:address/resolve', (req, res) => {
   });
 
   // Notify both
-  sendNotification(escrow.tenantName, 'Tenant', `The arbitrator has resolved the dispute for escrow ${escrow.address}. Release split: You get: ${tenantAmount}, Landlord gets: ${landlordAmount}. Funds have been sent.`);
-  sendNotification(escrow.landlordName, 'Landlord', `The arbitrator has resolved the dispute for escrow ${escrow.address}. Release split: Tenant gets: ${tenantAmount}, You get: ${landlordAmount}. Funds have been sent.`);
+  sendNotification(escrow.tenantName, 'Tenant', `The arbitrator has resolved the dispute for Lease ID ${escrow.leaseId}. Release split: You get: ${tenantAmount}, Landlord gets: ${landlordAmount}. Funds have been sent.`);
+  sendNotification(escrow.landlordName, 'Landlord', `The arbitrator has resolved the dispute for Lease ID ${escrow.leaseId}. Release split: Tenant gets: ${tenantAmount}, You get: ${landlordAmount}. Funds have been sent.`);
 
   res.json(escrow);
 });

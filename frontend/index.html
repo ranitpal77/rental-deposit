@@ -102,6 +102,23 @@
     <!-- Page 1: Workspace Section -->
     <div id="page-workspace" class="page-section">
       <div class="workspace-grid bento-grid">
+        <!-- Card 2: Connected Wallet Card -->
+        <div class="bento-card bento-card-wallet hidden" id="wallet-balance-card">
+          <h2 class="section-title">CONNECTED WALLET STATUS</h2>
+          <p class="section-desc">Details and real-time balance of the active Freighter wallet account.</p>
+
+          <div class="escrow-stats" style="margin-bottom: 0;">
+            <div class="stat-item">
+              <span class="stat-label">ACCOUNT ADDRESS</span>
+              <span id="wallet-balance-address" class="address-mono stat-value text-truncate">--</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">NATIVE XLM BALANCE</span>
+              <span id="wallet-balance-val" class="address-mono stat-value">-- XLM</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Card 1: Main Workspace Card -->
         <div class="bento-card bento-card-workspace" id="bento-workspace-card">
           <!-- Tab Controls -->
@@ -118,8 +135,8 @@
 
             <form id="form-create-escrow" class="form-container">
               <div class="form-group">
-                <label for="input-contract-id">DEPLOYED CONTRACT ADDRESS</label>
-                <input type="text" id="input-contract-id" class="address-mono" placeholder="e.g., CBETXXIY..." required>
+                <label for="input-contract-id">SHARED CONTRACT ADDRESS (AUTOMATIC)</label>
+                <input type="text" id="input-contract-id" class="address-mono" value="CAEU7RHIOMDWODUF7VVFVXPDE7PKO4HY7ERT7KKFN3MBTUW2JAWVUM6X" readonly style="opacity: 0.6; cursor: not-allowed; background: rgba(255,255,255,0.02);">
               </div>
 
               <div class="form-group">
@@ -178,11 +195,11 @@
           <!-- Manage / Interact Card -->
           <div id="panel-manage" class="workspace-panel hidden">
             <h2 class="section-title">ACTIVE INTERACTION</h2>
-            <p class="section-desc">Search and load an escrow contract by its contract address to perform actions.</p>
+            <p class="section-desc">Search and load a lease escrow by its unique numeric Lease ID to perform actions.</p>
 
             <div class="search-box">
               <input type="text" id="input-search-address" class="address-mono"
-                placeholder="Enter Soroban Contract ID...">
+                placeholder="Enter Lease ID (e.g., 578129031)...">
               <button id="btn-search-escrow" class="btn btn-secondary pill-btn">LOAD</button>
             </div>
 
@@ -253,8 +270,12 @@
                   <span id="detail-amount" class="address-mono stat-value">800 XLM</span>
                 </div>
                 <div class="stat-item">
-                  <span class="stat-label">CONTRACT ADDRESS</span>
-                  <span id="detail-contract-address" class="address-mono stat-value text-truncate">CD3W...QPL</span>
+                  <span class="stat-label">LEASE ID</span>
+                  <span id="detail-lease-id" class="address-mono stat-value">--</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">SHARED CONTRACT</span>
+                  <span id="detail-contract-address" class="address-mono stat-value text-truncate">CAEU7RHI...JAWVUM6X</span>
                 </div>
               </div>
 
@@ -272,6 +293,9 @@
                 <p class="action-desc">Negotiate the refund. Enter the split. If landlord and tenant splits match,
                   release
                   executes automatically.</p>
+
+                <!-- Proposal Status Banner -->
+                <div id="proposal-status-banner" class="hidden" style="margin-top: 0.5rem; margin-bottom: 1.25rem; width: 100%;"></div>
 
                 <div class="slider-container">
                   <div class="slider-labels">
@@ -320,9 +344,12 @@
               </div>
 
               <div class="action-section hidden" id="actions-released">
-                <div class="info-banner success">
-                  <span>ESCROW RELEASED & RESOLVED SUCCESSFULY</span>
-                  <p id="lbl-release-info">Funds sent back to accounts. Check history below.</p>
+                <div class="info-banner success" style="flex-direction: column; align-items: flex-start; gap: 0.5rem; padding: 1.25rem;">
+                  <span style="font-weight: 700; display: flex; align-items: center; gap: 0.35rem;">ESCROW RELEASED & RESOLVED SUCCESSFULLY</span>
+                  <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; flex-wrap: wrap; gap: 0.5rem;">
+                    <p id="lbl-release-info" style="margin: 0; font-size: 0.85rem;">Funds sent back to accounts.</p>
+                    <button id="btn-go-dashboard" class="btn btn-primary pill-btn" style="padding: 0.35rem 0.75rem; font-size: 0.75rem; border: none; font-weight: 600;">Check Dashboard</button>
+                  </div>
                 </div>
               </div>
 
@@ -330,22 +357,6 @@
           </div>
         </div>
 
-        <!-- Card 2: Connected Wallet Card -->
-        <div class="bento-card bento-card-wallet hidden" id="wallet-balance-card">
-          <h2 class="section-title">CONNECTED WALLET STATUS</h2>
-          <p class="section-desc">Details and real-time balance of the active Freighter wallet account.</p>
-
-          <div class="escrow-stats" style="margin-bottom: 0;">
-            <div class="stat-item">
-              <span class="stat-label">ACCOUNT ADDRESS</span>
-              <span id="wallet-balance-address" class="address-mono stat-value text-truncate">--</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">NATIVE XLM BALANCE</span>
-              <span id="wallet-balance-val" class="address-mono stat-value">-- XLM</span>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -464,6 +475,50 @@
           </div>
         </div>
 
+        <!-- Examples Card -->
+        <div class="bento-card bento-card-docs-examples" style="grid-column: span 3; margin-top: 1rem;">
+          <h2 class="section-title">DETAILED USER WALKTHROUGH EXAMPLES</h2>
+          <p class="section-desc">Practical usage scenarios demonstrating trustless deposit negotiation and arbitration.</p>
+          
+          <div class="docs-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
+            
+            <!-- Example 1: Without Arbitrator -->
+            <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: 16px; padding: 1.5rem;">
+              <h3 style="color: var(--color-success); font-family: var(--font-sans); font-size: 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.35rem; margin-top: 0;">
+                🤝 EXAMPLE 1: MUTUAL RELEASE (NO ARBITRATOR)
+              </h3>
+              <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 1rem;">
+                Best suited for standard move-outs where tenant and landlord are in agreement regarding refund splits (e.g., minor wear-and-tear deductions).
+              </p>
+              <ol style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.6; padding-left: 1.15rem; margin: 0;">
+                <li><strong>Deploy Lease:</strong> Tenant connects via Account 1, enters Landlord and Arbitrator keys under CREATE ESCROW, locks amount (e.g., 40 XLM), and clicks Initialize to generate a unique Lease ID.</li>
+                <li><strong>Lock Funds:</strong> Tenant goes to MANAGE ESCROW, loads the Lease ID, and clicks FUND ESCROW NOW. Funds lock inside the contract.</li>
+                <li><strong>Tenant Proposes Split:</strong> At move-out, Tenant proposes a split refund (e.g., 30 XLM to Tenant / 10 XLM to Landlord for minor repairs) via the split slider and signs.</li>
+                <li><strong>Landlord Matches Split:</strong> Landlord switches wallet to Account 2, connects, loads same Lease ID, drags slider to match (30/10 split), and submits.</li>
+                <li><strong>Instant Payout:</strong> Contract detects matching splits, immediately transfers 30 XLM to Tenant and 10 XLM to Landlord on-chain, and closes the lease.</li>
+              </ol>
+            </div>
+
+            <!-- Example 2: With Arbitrator -->
+            <div style="background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: 16px; padding: 1.5rem;">
+              <h3 style="color: var(--color-error); font-family: var(--font-sans); font-size: 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.35rem; margin-top: 0;">
+                ⚖️ EXAMPLE 2: DISPUTED RESOLUTION (WITH ARBITRATOR)
+              </h3>
+              <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 1rem;">
+                Best suited for conflicts where negotiations fail (e.g., landlord claims major paint/cleaning damage and refuses a partial refund).
+              </p>
+              <ol style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.6; padding-left: 1.15rem; margin: 0;">
+                <li><strong>Setup & Fund:</strong> Tenant initializes and funds the lease (e.g., 40 XLM deposit) using the steps in Example 1.</li>
+                <li><strong>Conflicting Proposals:</strong> Tenant proposes a 40/0 split. Landlord disagrees and proposes a 10/30 split. The interface locks input sliders and displays a "Proposals Conflict" error warning.</li>
+                <li><strong>Declare Dispute:</strong> Tenant or Landlord types a reason (e.g., "excessive painting fee") under RAISE DISPUTE and submits. Contract status locks to DISPUTED.</li>
+                <li><strong>Arbitrator Verdict:</strong> Arbitrator switches wallet to Account 3, connects, and loads the Lease ID. The Arbitrator-only decision slider reveals.</li>
+                <li><strong>Final Payout:</strong> The neutral Arbitrator sets the final split (e.g., 25 XLM to Tenant / 15 XLM to Landlord) and clicks RESOLVE DISPUTE. The contract executes payouts and closes.</li>
+              </ol>
+            </div>
+            
+          </div>
+        </div>
+
       </div>
     </div>
   </main>
@@ -471,12 +526,23 @@
   <footer class="footer">
     <div class="footer-inner">
       <span>DEPOSHIELD V1.0 // POWERED BY STELLAR SOROBAN SMART CONTRACT PROTOCOL</span>
+      <a href="https://stellar.expert/explorer/testnet/contract/CAEU7RHIOMDWODUF7VVFVXPDE7PKO4HY7ERT7KKFN3MBTUW2JAWVUM6X" target="_blank" class="btn btn-secondary pill-btn footer-btn" style="padding: 0.45rem 1rem; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 0.35rem; font-family: var(--font-mono); border: 1px solid var(--border-color); text-decoration: none; border-radius: 20px; transition: all var(--transition-fast);">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <line x1="10" y1="14" x2="21" y2="3"></line>
+        </svg>
+        VIEW SHARED CONTRACT
+      </a>
       <div class="status-indicator">
         <span class="status-dot green"></span>
         <span class="status-text font-mono">TESTNET ONLINE</span>
       </div>
     </div>
   </footer>
+
+  <!-- Toast Notifications Container -->
+  <div id="toast-container" class="toast-container"></div>
 
   <!-- Scripts -->
   <script type="module" src="./app.js"></script>

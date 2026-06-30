@@ -138,6 +138,9 @@
                 "vec": [
                   {
                     "symbol": "Amount"
+                  },
+                  {
+                    "u64": "1"
                   }
                 ]
               },
@@ -162,6 +165,9 @@
                 "vec": [
                   {
                     "symbol": "Arbitrator"
+                  },
+                  {
+                    "u64": "1"
                   }
                 ]
               },
@@ -186,6 +192,9 @@
                 "vec": [
                   {
                     "symbol": "IsFunded"
+                  },
+                  {
+                    "u64": "1"
                   }
                 ]
               },
@@ -209,31 +218,10 @@
               "key": {
                 "vec": [
                   {
-                    "symbol": "IsInitialized"
-                  }
-                ]
-              },
-              "durability": "persistent",
-              "val": {
-                "bool": true
-              }
-            }
-          },
-          "ext": "v0"
-        },
-        "live_until": 4095
-      },
-      {
-        "entry": {
-          "last_modified_ledger_seq": 0,
-          "data": {
-            "contract_data": {
-              "ext": "v0",
-              "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4",
-              "key": {
-                "vec": [
-                  {
                     "symbol": "Landlord"
+                  },
+                  {
+                    "u64": "1"
                   }
                 ]
               },
@@ -258,6 +246,9 @@
                 "vec": [
                   {
                     "symbol": "Status"
+                  },
+                  {
+                    "u64": "1"
                   }
                 ]
               },
@@ -282,6 +273,9 @@
                 "vec": [
                   {
                     "symbol": "Tenant"
+                  },
+                  {
+                    "u64": "1"
                   }
                 ]
               },
@@ -306,6 +300,9 @@
                 "vec": [
                   {
                     "symbol": "Token"
+                  },
+                  {
+                    "u64": "1"
                   }
                 ]
               },
