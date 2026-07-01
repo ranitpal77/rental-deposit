@@ -75,8 +75,8 @@ By leveraging Stellar's protocol-level primitives and Soroban's smart contractin
 ![Test Output](./assets/cargo-test-output-02.png)
 
 ### 📸 CI/CD Pipeline
-![CI/CD Pipeline running](./assets/Screenshot-of-cicd-01.png)
-![CI/CD Pipeline running](./assets/Screenshot-of-cicd-02.png)
+![CI/CD Pipeline running](./assets/Screenshot-of-cicd-03.png)
+![CI/CD Pipeline running](./assets/Screenshot-of-cicd-04.png)
 
 ---
 
