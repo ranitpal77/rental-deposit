@@ -72,7 +72,7 @@ By leveraging Stellar's protocol-level primitives and Soroban's smart contractin
 ![Mobile Responsive View](./assets/Mobile-UI-Screenshot.png)
 
 ### 📸 Test Output
-![Test Output](./assets/cargo-test-output.png)
+![Test Output](./assets/cargo-test-output-02.png)
 
 ### 📸 CI/CD Pipeline
 ![CI/CD Pipeline running](./assets/Screenshot-of-cicd-01.png)
@@ -122,7 +122,7 @@ flowchart LR
 ## 🛠️ Tech Stack
 - **Smart Contract Ecosystem**: Rust, Soroban SDK (v25)
 - **Network**: Stellar Testnet
-- **App Frontend**: HTML5, CSS3, Vanilla JavaScript (ES6), Vite
+- **App Frontend**: React, Vanilla CSS, Vite
 - **Wallet Integration**: `@stellar/freighter-api` (latest)
 - **Blockchain Interaction API**: `@stellar/stellar-sdk` (latest)
 - **Backend Coordinator**: Node.js & Express
@@ -207,7 +207,7 @@ To deploy the compiled contract to the Stellar Testnet:
 
 ### 🖥️ 4. Start the Services
 
-The workspace contains a placeholder template in the root, but the actual Deposhield dApp components are located in the `backend` and `frontend` folders. Run them in separate terminal instances:
+The Deposhield dApp components are located in the `backend` and `frontend` folders. Run them in separate terminal instances:
 
 #### A. Start the Backend Coordination Server
 The backend coordinates off-chain metadata (lease titles, descriptions, status tracking) and simulates transactional email/SMS notifications to the console.
@@ -224,7 +224,7 @@ npm start
 *The backend server will run at `http://localhost:5000`.*
 
 #### B. Start the Frontend Web Dashboard
-The frontend is a vanilla JS application built with Vite that connects to Freighter and interacts directly with the Stellar Testnet RPC.
+The frontend is a React application built with Vite that connects to Freighter and interacts directly with the Stellar Testnet RPC.
 ```bash
 # Navigate to the frontend folder
 cd frontend
@@ -308,11 +308,14 @@ rental-deposit/
 │       │   ├── lib.rs         # The Escrow contract logic
 │       │   └── test.rs        # Contract Unit tests
 │       └── Cargo.toml         # Rust dependencies & profiles
-├── frontend/                  # Vanilla JS Frontend built with Vite
-│   ├── index.html             # Main dApp Interface
-│   ├── style.css              # Custom styling UI and animations
-│   ├── app.js                 # Stellar SDK and Freighter API interactions
-│   └── package.json           # Frontend dependencies 
+├── frontend/                  # React Frontend built with Vite
+│   ├── index.html             # Main index mount file
+│   ├── vite.config.js         # Vite configuration
+│   ├── package.json           # Frontend dependencies 
+│   └── src/                   # React components and styling
+│       ├── App.jsx            # Main wallet-integrated React dApp logic
+│       ├── index.jsx          # React app mount file
+│       └── index.css          # Premium stylesheet
 ├── backend/                   # Backend Coordinator
 │   ├── server.js              # Express app for metadata coordinating
 │   └── package.json           # Backend dependencies

@@ -1575,10 +1575,6 @@ input:focus, textarea:focus, select:focus {
 /* Page 1 (Workspace) Reflow Overrides */
 #page-workspace .bento-grid {
   grid-template-columns: 1fr;
-}
-
-#page-workspace .bento-grid.wallet-connected {
-  grid-template-columns: 1fr;
   max-width: 900px;
   margin: 2rem auto 0 auto;
 }

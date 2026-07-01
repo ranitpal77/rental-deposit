@@ -1,0 +1,1559 @@
+/* global BigInt */
+import React, { useState, useEffect, useCallback } from 'react';
+import { isConnected, requestAccess, signTransaction } from '@stellar/freighter-api';
+import { 
+  Contract, 
+  TransactionBuilder, 
+  Networks, 
+  BASE_FEE,
+  nativeToScVal,
+  scValToNative,
+  Account
+} from '@stellar/stellar-sdk';
+import { Server } from '@stellar/stellar-sdk/rpc';
+import { Buffer } from 'buffer';
+
+// Polyfill Buffer for Webpack 5 in React environment
+if (typeof window !== 'undefined') {
+  window.Buffer = window.Buffer || Buffer;
+}
+
+// Config
+const RPC_URL = 'https://soroban-testnet.stellar.org:443';
+const NETWORK_PASSPHRASE = Networks.TESTNET;
+const BACKEND_URL = 'http://localhost:5000';
+const DEFAULT_CONTRACT_ID = 'CAEU7RHIOMDWODUF7VVFVXPDE7PKO4HY7ERT7KKFN3MBTUW2JAWVUM6X';
+
+const rpcServer = new Server(RPC_URL);
+
+// Helper for local storage database
+const getLocalEscrows = () => {
+  const data = localStorage.getItem('deposhield_escrows');
+  if (!data) {
+    localStorage.setItem('deposhield_escrows', JSON.stringify([]));
+    return [];
+  }
+  return JSON.parse(data);
+};
+
+const saveLocalEscrows = (escrows) => {
+  localStorage.setItem('deposhield_escrows', JSON.stringify(escrows));
+};
+
+function App() {
+  // Navigation & Theme State
+  const [activePage, setActivePage] = useState('workspace');
+  const [activeTab, setActiveTab] = useState('create');
+  const [theme, setTheme] = useState('dark');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Wallet State
+  const [userAddress, setUserAddress] = useState(null);
+  const [walletBalance, setWalletBalance] = useState('-- XLM');
+
+  // Search & Manage State
+  const [searchLeaseId, setSearchLeaseId] = useState('');
+  const [activeEscrowDetails, setActiveEscrowDetails] = useState(null);
+  const [errorDetails, setErrorDetails] = useState(null);
+  const [disputeReasonInput, setDisputeReasonInput] = useState('');
+
+  // Split sliders
+  const [rangeSplitVal, setRangeSplitVal] = useState(0);
+  const [rangeArbVal, setRangeArbVal] = useState(0);
+
+  // Form State
+  const [createFormData, setCreateFormData] = useState({
+    title: '',
+    desc: '',
+    landlord: '',
+    arbitrator: '',
+    amount: '',
+    token: 'native',
+    tenantName: '',
+    landlordName: ''
+  });
+
+  // Action Buttons Loading State
+  const [isCreating, setIsCreating] = useState(false);
+  const [isFunding, setIsFunding] = useState(false);
+  const [isProposing, setIsProposing] = useState(false);
+  const [isRaisingDispute, setIsRaisingDispute] = useState(false);
+  const [isResolving, setIsResolving] = useState(false);
+
+  // Dashboard & Metrics State
+  const [dashboardEscrows, setDashboardEscrows] = useState([]);
+  const [metrics, setMetrics] = useState({
+    tvl: 0,
+    activeCount: 0,
+    resolvedCount: 0,
+    disputeCount: 0
+  });
+
+  // Toast notifications State
+  const [toasts, setToasts] = useState([]);
+
+  // Toast Notification Helper
+  const showToast = useCallback((message, type = 'success') => {
+    const id = Date.now() + Math.random();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4000);
+  }, []);
+
+  // Theme Sync on Mount
+  useEffect(() => {
+    const currentTheme = localStorage.getItem('deposhield_theme') || 'dark';
+    setTheme(currentTheme);
+    if (currentTheme === 'light') {
+      document.body.classList.add('light-theme');
+    } else {
+      document.body.classList.remove('light-theme');
+    }
+  }, []);
+
+  const handleToggleTheme = () => {
+    const isLight = document.body.classList.toggle('light-theme');
+    const newTheme = isLight ? 'light' : 'dark';
+    localStorage.setItem('deposhield_theme', newTheme);
+    setTheme(newTheme);
+  };
+
+  // Wallet Connection helper
+  const updateWalletBalance = useCallback(async (address) => {
+    if (!address) {
+      setWalletBalance('-- XLM');
+      return;
+    }
+    try {
+      const res = await fetch(`https://horizon-testnet.stellar.org/accounts/${address}`);
+      if (res.status === 404) {
+        setWalletBalance('0.00 XLM');
+        return;
+      }
+      const data = await res.json();
+      const native = data.balances.find(b => b.asset_type === 'native');
+      if (native) {
+        const amount = parseFloat(native.balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        setWalletBalance(`${amount} XLM`);
+      } else {
+        setWalletBalance('0.00 XLM');
+      }
+    } catch (err) {
+      console.error('Failed to fetch wallet balance:', err);
+      setWalletBalance('Error loading');
+    }
+  }, []);
+
+  const handleConnectWallet = useCallback(async () => {
+    const connectedResult = await isConnected();
+    if (!connectedResult || !connectedResult.isConnected) {
+      showToast('Please install the Freighter wallet extension to use this application.', 'info');
+      return;
+    }
+    try {
+      const accessResult = await requestAccess();
+      if (accessResult && accessResult.error) {
+        throw new Error(accessResult.error);
+      }
+      if (accessResult && accessResult.address) {
+        const address = accessResult.address;
+        setUserAddress(address);
+        localStorage.setItem('deposhield_connected_address', address);
+        showToast('Wallet connected successfully!', 'success');
+        updateWalletBalance(address);
+      }
+    } catch (err) {
+      console.error('Wallet connection rejected:', err);
+      showToast('Failed to connect to Freighter wallet.', 'error');
+    }
+  }, [showToast, updateWalletBalance]);
+
+  const handleDisconnectWallet = useCallback(() => {
+    setUserAddress(null);
+    setWalletBalance('-- XLM');
+    localStorage.removeItem('deposhield_connected_address');
+    showToast('Wallet disconnected', 'info');
+  }, [showToast]);
+
+  // Load wallet on mount
+  useEffect(() => {
+    const storedAddress = localStorage.getItem('deposhield_connected_address');
+    if (storedAddress) {
+      setUserAddress(storedAddress);
+      updateWalletBalance(storedAddress);
+    }
+  }, [updateWalletBalance]);
+
+  // Load Dashboard Data
+  const loadDashboardEscrows = useCallback(() => {
+    try {
+      const allEscrows = getLocalEscrows();
+      
+      const escrows = userAddress 
+        ? allEscrows.filter(e => e.tenant === userAddress || e.landlord === userAddress || e.arbitrator === userAddress)
+        : [];
+      
+      setDashboardEscrows(escrows);
+
+      // Compute metrics
+      let tvl = 0;
+      let activeCount = 0;
+      let resolvedCount = 0;
+      let disputeCount = 0;
+
+      escrows.forEach(escrow => {
+        const status = escrow.status.toLowerCase();
+        const amount = parseFloat(escrow.amount) || 0;
+        
+        if (status === 'active') {
+          activeCount++;
+          tvl += amount;
+        } else if (status === 'disputed') {
+          disputeCount++;
+          tvl += amount;
+        } else if (status === 'released' || status === 'released (disputed)' || status === 'resolved') {
+          resolvedCount++;
+        } else if (status === 'created') {
+          activeCount++;
+        }
+      });
+
+      setMetrics({
+        tvl,
+        activeCount,
+        resolvedCount,
+        disputeCount
+      });
+    } catch (err) {
+      console.error('Failed to load dashboard data:', err);
+    }
+  }, [userAddress]);
+
+  useEffect(() => {
+    loadDashboardEscrows();
+    const balanceInterval = setInterval(() => {
+      if (userAddress) updateWalletBalance(userAddress);
+    }, 10000);
+
+    const dashboardInterval = setInterval(() => {
+      loadDashboardEscrows();
+    }, 8000);
+
+    return () => {
+      clearInterval(balanceInterval);
+      clearInterval(dashboardInterval);
+    };
+  }, [userAddress, loadDashboardEscrows, updateWalletBalance]);
+
+  // Soroban Helper Methods
+  const simulateCall = async (contractId, method, args = []) => {
+    const contract = new Contract(contractId);
+    const dummyAccount = new Account('GBRPYHIL2CI3FNQ4BXLFMNDLFJUNPU2HY3ZMFSHONUCEOASW7QC7OX2H', '0');
+    
+    const tx = new TransactionBuilder(dummyAccount, {
+      fee: '100',
+      networkPassphrase: NETWORK_PASSPHRASE,
+    })
+    .addOperation(contract.call(method, ...args))
+    .setTimeout(30)
+    .build();
+
+    const sim = await rpcServer.simulateTransaction(tx);
+    if (sim.error) {
+      throw new Error(`Simulation failed for ${method}: ${sim.error}`);
+    }
+    
+    if (sim.result && sim.result.retval) {
+      return scValToNative(sim.result.retval);
+    }
+    return null;
+  };
+
+  const waitTx = async (hash) => {
+    for (let i = 0; i < 20; i++) {
+      const res = await rpcServer.getTransaction(hash);
+      if (res.status === 'SUCCESS') {
+        return res;
+      } else if (res.status === 'FAILED') {
+        throw new Error(`Transaction execution failed: ${res.resultXdr}`);
+      }
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+    throw new Error('Transaction execution timeout');
+  };
+
+  const executeTx = async (contractId, method, args = []) => {
+    if (!userAddress) {
+      showToast('Please connect your Freighter wallet first.', 'error');
+      throw new Error('Wallet not connected');
+    }
+
+    const sourceAccount = await rpcServer.getAccount(userAddress);
+    const contract = new Contract(contractId);
+
+    let tx = new TransactionBuilder(sourceAccount, {
+      fee: BASE_FEE,
+      networkPassphrase: NETWORK_PASSPHRASE,
+    })
+    .addOperation(contract.call(method, ...args))
+    .setTimeout(30)
+    .build();
+
+    tx = await rpcServer.prepareTransaction(tx);
+
+    const signResult = await signTransaction(tx.toXDR(), { networkPassphrase: NETWORK_PASSPHRASE });
+    if (signResult.error) {
+      const errorMsg = typeof signResult.error === 'string'
+        ? signResult.error
+        : (signResult.error.message || signResult.error.error || 'User cancelled transaction signing');
+      throw new Error(`Signing rejected or failed: ${errorMsg}`);
+    }
+    const signedTx = TransactionBuilder.fromXDR(signResult.signedTxXdr, NETWORK_PASSPHRASE);
+
+    const submitResult = await rpcServer.sendTransaction(signedTx);
+    if (submitResult.status === 'ERROR') {
+      throw new Error(`Submit error: ${JSON.stringify(submitResult)}`);
+    }
+
+    console.log('Transaction submitted. Hash:', submitResult.hash);
+    return await waitTx(submitResult.hash);
+  };
+
+  // Safe error parser
+  const getErrorMessage = (err) => {
+    if (!err) return 'Unknown error';
+    if (typeof err === 'string') return err;
+    if (err.error && typeof err.error === 'string') return err.error;
+    if (err.message && typeof err.message === 'string') return err.message;
+    try {
+      const str = JSON.stringify(err);
+      if (str === '{}') return String(err);
+      return str;
+    } catch (e) {
+      return String(err);
+    }
+  };
+
+  // Load Escrow Detail Logic
+  const handleLoadEscrow = async (idStr) => {
+    if (!idStr) return;
+    setActiveEscrowDetails(null);
+    setErrorDetails(null);
+
+    try {
+      const leaseId = BigInt(idStr);
+      const leaseIdVal = nativeToScVal(leaseId, { type: 'u64' });
+
+      // Fetch offline metadata from localStorage
+      const escrows = getLocalEscrows();
+      let metadata = escrows.find(e => e.leaseId === idStr);
+      if (!metadata) {
+        metadata = {
+          tenantName: 'Tenant',
+          landlordName: 'Landlord',
+          arbitratorName: 'Delhi Housing Authority',
+          title: 'Rental Escrow',
+          description: 'Security deposit'
+        };
+      }
+
+      const contractId = DEFAULT_CONTRACT_ID;
+
+      // Parallel simulated RPC calls
+      const [tenantAddr, landlordAddr, arbitratorAddr, amountValRaw, isFunded, statusRaw] = await Promise.all([
+        simulateCall(contractId, 'get_tenant', [leaseIdVal]),
+        simulateCall(contractId, 'get_landlord', [leaseIdVal]),
+        simulateCall(contractId, 'get_arbitrator', [leaseIdVal]),
+        simulateCall(contractId, 'get_amount', [leaseIdVal]),
+        simulateCall(contractId, 'is_funded', [leaseIdVal]),
+        simulateCall(contractId, 'get_status', [leaseIdVal])
+      ]);
+
+      const amountVal = Number(amountValRaw);
+      const status = Number(statusRaw); // 0=Created, 1=Active, 2=Disputed, 3=Released
+
+      // Fetch proposals
+      let tenantProposal = null;
+      let landlordProposal = null;
+      try {
+        tenantProposal = await simulateCall(contractId, 'get_proposal', [
+          leaseIdVal,
+          nativeToScVal(tenantAddr, { type: 'address' })
+        ]);
+      } catch (e) {
+        console.warn('Failed to fetch tenant proposal:', e);
+      }
+      try {
+        landlordProposal = await simulateCall(contractId, 'get_proposal', [
+          leaseIdVal,
+          nativeToScVal(landlordAddr, { type: 'address' })
+        ]);
+      } catch (e) {
+        console.warn('Failed to fetch landlord proposal:', e);
+      }
+
+      // Try fetching dispute reason if status is 2 (Disputed)
+      let disputeReason = '';
+      if (status === 2) {
+        try {
+          disputeReason = await simulateCall(contractId, 'get_dispute_reason', [leaseIdVal]);
+        } catch (e) {
+          console.warn('Failed to fetch dispute reason:', e);
+          disputeReason = 'No dispute description provided';
+        }
+      }
+
+      const detailsObj = {
+        leaseId: idStr,
+        address: contractId,
+        tenant: tenantAddr,
+        landlord: landlordAddr,
+        arbitrator: arbitratorAddr,
+        amount: amountVal,
+        isFunded,
+        status,
+        tenantName: metadata.tenantName,
+        landlordName: metadata.landlordName,
+        title: metadata.title,
+        description: metadata.description,
+        tenantProposal,
+        landlordProposal,
+        disputeReason
+      };
+
+      setActiveEscrowDetails(detailsObj);
+
+      // Snap slider ranges to snapped proposals or default half
+      const isCurrentUserTenant = userAddress === tenantAddr;
+      const isCurrentUserLandlord = userAddress === landlordAddr;
+      const hasTenantProposed = !!tenantProposal;
+      const hasLandlordProposed = !!landlordProposal;
+      const hasCurrentUserProposed = (isCurrentUserTenant && hasTenantProposed) || (isCurrentUserLandlord && hasLandlordProposed);
+      const hasOtherPartyProposed = (isCurrentUserTenant && hasLandlordProposed) || (isCurrentUserLandlord && hasTenantProposed);
+
+      if (hasOtherPartyProposed && !hasCurrentUserProposed) {
+        // Auto snap slider to match other party split to facilitate easy release
+        const otherProposal = isCurrentUserTenant ? landlordProposal : tenantProposal;
+        const otherTenantAmt = Number(otherProposal[0]);
+        setRangeSplitVal(otherTenantAmt);
+      } else {
+        setRangeSplitVal(Math.floor(amountVal / 2));
+      }
+
+      setRangeArbVal(Math.floor(amountVal / 2));
+    } catch (err) {
+      console.error('Failed to load escrow details:', err);
+      setErrorDetails({
+        leaseId: idStr,
+        message: getErrorMessage(err)
+      });
+    }
+  };
+
+  // Create Escrow Form Handler
+  const handleCreateEscrow = async (e) => {
+    e.preventDefault();
+    if (!userAddress) {
+      showToast('Please connect your Freighter wallet to execute smart contract operations.', 'error');
+      return;
+    }
+
+    const { title, desc, landlord, arbitrator, amount, token, tenantName, landlordName } = createFormData;
+    const contractAddress = DEFAULT_CONTRACT_ID;
+
+    // SAC token address mappings
+    const tokenAddress = token === 'native' 
+      ? 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC' 
+      : 'CD6BLQ43MNALRYGKLCSDPQWKC4SN46LZGRHPNJSJZLDC6H2H3NSO5IZL'; // USDC Mock
+
+    setIsCreating(true);
+    try {
+      // Generate 16 digit Lease ID
+      const leaseId = BigInt(Math.floor(Math.random() * 9000000000000000) + 1000000000000000);
+      const leaseIdStr = leaseId.toString();
+
+      console.log('Initializing escrow contract', contractAddress, 'with Lease ID', leaseIdStr);
+      
+      const args = [
+        nativeToScVal(leaseId, { type: 'u64' }),
+        nativeToScVal(userAddress, { type: 'address' }), // tenant
+        nativeToScVal(landlord, { type: 'address' }),
+        nativeToScVal(arbitrator, { type: 'address' }),
+        nativeToScVal(tokenAddress, { type: 'address' }),
+        nativeToScVal(BigInt(amount), { type: 'i128' })
+      ];
+
+      await executeTx(contractAddress, 'initialize', args);
+
+      // Save to local storage
+      const escrows = getLocalEscrows();
+      const newEscrow = {
+        leaseId: leaseIdStr,
+        address: contractAddress,
+        tenant: userAddress,
+        tenantName: tenantName || 'Tenant',
+        landlord,
+        landlordName: landlordName || 'Landlord',
+        arbitrator,
+        arbitratorName: 'Delhi Housing Authority',
+        amount: `${amount} XLM`,
+        status: 'Created',
+        title,
+        description: desc,
+        history: [
+          { timestamp: new Date().toISOString(), event: 'Escrow Created & Initialized' }
+        ]
+      };
+      escrows.push(newEscrow);
+      saveLocalEscrows(escrows);
+
+      // Post to backend falling back silently on errors
+      try {
+        await fetch(`${BACKEND_URL}/api/escrows`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newEscrow)
+        });
+      } catch (err) {
+        console.warn('Backend sync failed:', err);
+      }
+
+      showToast(`Escrow initialized successfully! Lease ID: ${leaseIdStr}`, 'success');
+      
+      // Clear form
+      setCreateFormData({
+        title: '',
+        desc: '',
+        landlord: '',
+        arbitrator: '',
+        amount: '',
+        token: 'native',
+        tenantName: '',
+        landlordName: ''
+      });
+
+      loadDashboardEscrows();
+      // Load details directly in workspace
+      setActiveTab('manage');
+      setSearchLeaseId(leaseIdStr);
+      handleLoadEscrow(leaseIdStr);
+      updateWalletBalance(userAddress);
+    } catch (err) {
+      console.error('Escrow initialization failed:', err);
+      showToast(`Failed to initialize escrow: ${getErrorMessage(err)}`, 'error');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  // Fund Escrow Handler
+  const handleFundEscrow = async () => {
+    if (!activeEscrowDetails) return;
+    const leaseIdStr = activeEscrowDetails.leaseId;
+
+    setIsFunding(true);
+    try {
+      const leaseId = BigInt(leaseIdStr);
+      await executeTx(activeEscrowDetails.address, 'fund', [nativeToScVal(leaseId, { type: 'u64' })]);
+
+      // Update offline DB
+      const escrows = getLocalEscrows();
+      const escrow = escrows.find(e => e.leaseId === leaseIdStr);
+      if (escrow) {
+        escrow.status = 'Active';
+        escrow.history.push({ timestamp: new Date().toISOString(), event: 'Escrow Funded' });
+        saveLocalEscrows(escrows);
+      }
+
+      // Notify backend falling back silently
+      try {
+        await fetch(`${BACKEND_URL}/api/escrows/${leaseIdStr}/fund`, { method: 'POST' });
+      } catch (err) {
+        console.warn('Backend sync failed:', err);
+      }
+
+      showToast('Escrow funded successfully on-chain! Funds locked in contract.', 'success');
+      handleLoadEscrow(leaseIdStr);
+      loadDashboardEscrows();
+      updateWalletBalance(userAddress);
+    } catch (err) {
+      console.error('Funding failed:', err);
+      showToast(`Funding transaction failed: ${getErrorMessage(err)}`, 'error');
+    } finally {
+      setIsFunding(false);
+    }
+  };
+
+  // Propose Split Handler
+  const handleProposeSplit = async () => {
+    if (!activeEscrowDetails) return;
+    const leaseIdStr = activeEscrowDetails.leaseId;
+    const tenantAmt = rangeSplitVal;
+    const landlordAmt = activeEscrowDetails.amount - tenantAmt;
+
+    setIsProposing(true);
+    try {
+      const leaseId = BigInt(leaseIdStr);
+      const leaseIdVal = nativeToScVal(leaseId, { type: 'u64' });
+
+      const args = [
+        leaseIdVal,
+        nativeToScVal(userAddress, { type: 'address' }),
+        nativeToScVal(BigInt(tenantAmt), { type: 'i128' }),
+        nativeToScVal(BigInt(landlordAmt), { type: 'i128' })
+      ];
+
+      await executeTx(activeEscrowDetails.address, 'propose_release', args);
+
+      // Check on-chain status to see if splits match
+      const currentStatus = await simulateCall(activeEscrowDetails.address, 'get_status', [leaseIdVal]);
+
+      const escrows = getLocalEscrows();
+      const escrow = escrows.find(e => e.leaseId === leaseIdStr);
+      if (escrow) {
+        if (currentStatus === 3) {
+          escrow.status = 'Released';
+          escrow.history.push({ 
+            timestamp: new Date().toISOString(), 
+            event: `Escrow Released! (Tenant: ${tenantAmt} XLM, Landlord: ${landlordAmt} XLM)` 
+          });
+          showToast('Agreement reached! Splits match. Escrow released successfully!', 'success');
+
+          try {
+            await fetch(`${BACKEND_URL}/api/escrows/${leaseIdStr}/release`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ tenantAmount: tenantAmt, landlordAmount: landlordAmt })
+            });
+          } catch (err) {
+            console.warn('Backend sync failed:', err);
+          }
+        } else {
+          const callerRole = userAddress === escrow.tenant ? 'Tenant' : 'Landlord';
+          escrow.history.push({ 
+            timestamp: new Date().toISOString(), 
+            event: `${callerRole} proposed release split: Tenant: ${tenantAmt} XLM, Landlord: ${landlordAmt} XLM` 
+          });
+          showToast(`Split proposal submitted! Waiting for matching proposal from the other party.`, 'info');
+
+          try {
+            await fetch(`${BACKEND_URL}/api/escrows/${leaseIdStr}/propose`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ caller: userAddress, tenantAmount: tenantAmt, landlordAmount: landlordAmt })
+            });
+          } catch (err) {
+            console.warn('Backend sync failed:', err);
+          }
+        }
+        saveLocalEscrows(escrows);
+      }
+
+      handleLoadEscrow(leaseIdStr);
+      loadDashboardEscrows();
+      updateWalletBalance(userAddress);
+    } catch (err) {
+      console.error('Proposal split failed:', err);
+      showToast(`Transaction failed: ${getErrorMessage(err)}`, 'error');
+    } finally {
+      setIsProposing(false);
+    }
+  };
+
+  // Dispute Handler
+  const handleRaiseDispute = async () => {
+    if (!activeEscrowDetails) return;
+    const leaseIdStr = activeEscrowDetails.leaseId;
+    const reason = disputeReasonInput.trim() || 'No dispute reason provided';
+
+    setIsRaisingDispute(true);
+    try {
+      const leaseId = BigInt(leaseIdStr);
+      const args = [
+        nativeToScVal(leaseId, { type: 'u64' }),
+        nativeToScVal(userAddress, { type: 'address' }),
+        nativeToScVal(reason, { type: 'string' })
+      ];
+
+      await executeTx(activeEscrowDetails.address, 'dispute', args);
+
+      const escrows = getLocalEscrows();
+      const escrow = escrows.find(e => e.leaseId === leaseIdStr);
+      if (escrow) {
+        const callerRole = userAddress === escrow.tenant ? 'Tenant' : 'Landlord';
+        escrow.status = 'Disputed';
+        escrow.history.push({ 
+          timestamp: new Date().toISOString(), 
+          event: `Dispute declared by ${callerRole}. Reason: "${reason}"` 
+        });
+        saveLocalEscrows(escrows);
+      }
+
+      try {
+        await fetch(`${BACKEND_URL}/api/escrows/${leaseIdStr}/dispute`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ caller: userAddress, reason })
+        });
+      } catch (err) {
+        console.warn('Backend sync failed:', err);
+      }
+
+      showToast('Dispute successfully declared on-chain. Arbitrator has been notified.', 'success');
+      setDisputeReasonInput('');
+      handleLoadEscrow(leaseIdStr);
+      loadDashboardEscrows();
+    } catch (err) {
+      console.error('Dispute failed:', err);
+      showToast(`Dispute transaction failed: ${getErrorMessage(err)}`, 'error');
+    } finally {
+      setIsRaisingDispute(false);
+    }
+  };
+
+  // Resolve Dispute (Arbitrator Action)
+  const handleResolveDispute = async () => {
+    if (!activeEscrowDetails) return;
+    const leaseIdStr = activeEscrowDetails.leaseId;
+    const tenantAmt = rangeArbVal;
+    const landlordAmt = activeEscrowDetails.amount - tenantAmt;
+
+    setIsResolving(true);
+    try {
+      const leaseId = BigInt(leaseIdStr);
+      const args = [
+        nativeToScVal(leaseId, { type: 'u64' }),
+        nativeToScVal(BigInt(tenantAmt), { type: 'i128' }),
+        nativeToScVal(BigInt(landlordAmt), { type: 'i128' })
+      ];
+
+      await executeTx(activeEscrowDetails.address, 'resolve_dispute', args);
+
+      const escrows = getLocalEscrows();
+      const escrow = escrows.find(e => e.leaseId === leaseIdStr);
+      if (escrow) {
+        escrow.status = 'Released (Disputed)';
+        escrow.history.push({ 
+          timestamp: new Date().toISOString(), 
+          event: `Dispute resolved by Arbitrator! (Tenant: ${tenantAmt} XLM, Landlord: ${landlordAmt} XLM)` 
+        });
+        saveLocalEscrows(escrows);
+      }
+
+      try {
+        await fetch(`${BACKEND_URL}/api/escrows/${leaseIdStr}/resolve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tenantAmount: tenantAmt, landlordAmount: landlordAmt })
+        });
+      } catch (err) {
+        console.warn('Backend sync failed:', err);
+      }
+
+      showToast('Dispute resolved by arbitrator. Funds distributed!', 'success');
+      handleLoadEscrow(leaseIdStr);
+      loadDashboardEscrows();
+      updateWalletBalance(userAddress);
+    } catch (err) {
+      console.error('Resolution failed:', err);
+      showToast(`Resolution transaction failed: ${getErrorMessage(err)}`, 'error');
+    } finally {
+      setIsResolving(false);
+    }
+  };
+
+  // Status Badge Class parser
+  const getStatusBadgeClass = (statusStr) => {
+    switch (statusStr.toLowerCase()) {
+      case 'active': return 'status-active';
+      case 'disputed': return 'status-disputed';
+      case 'created': return 'status-created';
+      case 'released':
+      case 'released (disputed)': return 'status-released';
+      default: return 'status-released';
+    }
+  };
+
+  return (
+    <>
+      {/* Background Grid Texture */}
+      <div className="grid-background"></div>
+
+      {/* Floating Theme Toggle Button */}
+      <button onClick={handleToggleTheme} className="theme-toggle-btn" aria-label="Toggle Theme">
+        {theme === 'dark' ? (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2" />
+            <path d="M12 20v2" />
+            <path d="m4.93 4.93 1.41 1.41" />
+            <path d="m17.66 17.66 1.41 1.41" />
+            <path d="M2 12h2" />
+            <path d="M20 12h2" />
+            <path d="m6.34 17.66-1.41 1.41" />
+            <path d="m19.07 4.93-1.41 1.41" />
+          </svg>
+        ) : (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+          </svg>
+        )}
+      </button>
+
+      {/* Floating Nav Bar */}
+      <nav className="navbar">
+        <div className="navbar-brand">
+          <span className="logo-text">DEPOSHIELD</span>
+          <span className="tagline">STELLAR ESCROW</span>
+        </div>
+        <div className="navbar-menu">
+          <button 
+            onClick={() => { setActivePage('workspace'); setIsMobileMenuOpen(false); }} 
+            className={`nav-link ${activePage === 'workspace' ? 'active' : ''}`}
+          >
+            WORKSPACE
+          </button>
+          <button 
+            onClick={() => { setActivePage('dashboard'); setIsMobileMenuOpen(false); }} 
+            className={`nav-link ${activePage === 'dashboard' ? 'active' : ''}`}
+          >
+            DASHBOARD
+          </button>
+          <button 
+            onClick={() => { setActivePage('docs'); setIsMobileMenuOpen(false); }} 
+            className={`nav-link ${activePage === 'docs' ? 'active' : ''}`}
+          >
+            DOCUMENTATION
+          </button>
+        </div>
+        <div className="navbar-actions">
+          {!userAddress ? (
+            <button onClick={handleConnectWallet} className="btn btn-primary pill-btn">CONNECT WALLET</button>
+          ) : (
+            <div className="wallet-info">
+              <span className="address-mono">{`${userAddress.slice(0, 6)}...${userAddress.slice(-6)}`}</span>
+              <button onClick={handleDisconnectWallet} className="btn btn-secondary btn-icon-only" aria-label="Disconnect">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                  <polyline points="16 17 21 12 16 7"></polyline>
+                  <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+              </button>
+            </div>
+          )}
+          <button 
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
+            className={`hamburger-btn ${isMobileMenuOpen ? 'open' : ''}`} 
+            aria-label="Toggle menu"
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+        </div>
+      </nav>
+
+      {/* Mobile Dropdown Menu */}
+      <div className={`mobile-menu ${isMobileMenuOpen ? 'open' : ''}`}>
+        <button 
+          onClick={() => { setActivePage('workspace'); setIsMobileMenuOpen(false); }} 
+          className={`mobile-nav-link ${activePage === 'workspace' ? 'active' : ''}`}
+        >
+          WORKSPACE
+        </button>
+        <button 
+          onClick={() => { setActivePage('dashboard'); setIsMobileMenuOpen(false); }} 
+          className={`mobile-nav-link ${activePage === 'dashboard' ? 'active' : ''}`}
+        >
+          DASHBOARD
+        </button>
+        <button 
+          onClick={() => { setActivePage('docs'); setIsMobileMenuOpen(false); }} 
+          className={`mobile-nav-link ${activePage === 'docs' ? 'active' : ''}`}
+        >
+          DOCUMENTATION
+        </button>
+      </div>
+
+      <main className="container">
+        {/* Hero Section */}
+        <header className="hero">
+          <div className="hero-content">
+            <span className="badge">SOROBAN SMART CONTRACT PROTOCOL</span>
+            <h1 className="hero-title">TRUSTLESS SECURITY DEPOSITS</h1>
+            <p className="hero-subtitle">
+              Eliminate landlord-tenant friction. Lock rental deposits on-chain with neutral, automated rules. Release funds
+              mutually or resolve disputes instantly via decentralized arbitration.
+            </p>
+          </div>
+        </header>
+
+        {/* Page 1: Workspace Section */}
+        {activePage === 'workspace' && (
+          <div id="page-workspace" className="page-section">
+            <div className={`workspace-grid bento-grid ${userAddress ? 'wallet-connected' : ''}`}>
+              
+              {/* Wallet Status Card (hidden when not connected) */}
+              {userAddress && (
+                <div className="bento-card bento-card-wallet">
+                  <h2 className="section-title">CONNECTED WALLET STATUS</h2>
+                  <p className="section-desc">Details and real-time balance of the active Freighter wallet account.</p>
+
+                  <div className="escrow-stats" style={{ marginBottom: 0 }}>
+                    <div className="stat-item">
+                      <span className="stat-label">ACCOUNT ADDRESS</span>
+                      <span className="address-mono stat-value text-truncate">
+                        {userAddress ? `${userAddress.slice(0, 8)}...${userAddress.slice(-8)}` : '--'}
+                      </span>
+                    </div>
+                    <div className="stat-item">
+                      <span className="stat-label">NATIVE XLM BALANCE</span>
+                      <span className="address-mono stat-value">{walletBalance}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Main Workspace Card */}
+              <div className="bento-card bento-card-workspace">
+                <div className="tab-control">
+                  <button 
+                    onClick={() => setActiveTab('create')} 
+                    className={`tab-btn ${activeTab === 'create' ? 'active' : ''}`}
+                  >
+                    CREATE ESCROW
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('manage')} 
+                    className={`tab-btn ${activeTab === 'manage' ? 'active' : ''}`}
+                  >
+                    MANAGE ESCROW
+                  </button>
+                </div>
+
+                {/* Create Escrow Panel */}
+                {activeTab === 'create' && (
+                  <div className="workspace-panel">
+                    <h2 className="section-title">INITIALIZE NEW LEASE</h2>
+                    <p className="section-desc">Set up a secure escrow contract instance. The tenant will fund it, and release conditions will lock it.</p>
+
+                    <form onSubmit={handleCreateEscrow} className="form-container">
+                      <div className="form-group">
+                        <label htmlFor="input-contract-id">SHARED CONTRACT ADDRESS (AUTOMATIC)</label>
+                        <input 
+                          type="text" 
+                          id="input-contract-id" 
+                          className="address-mono" 
+                          value={DEFAULT_CONTRACT_ID} 
+                          readOnly 
+                          style={{ opacity: 0.6, cursor: 'not-allowed', background: 'rgba(255,255,255,0.02)' }}
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor="input-title">LEASE TITLE</label>
+                        <input 
+                          type="text" 
+                          id="input-title" 
+                          placeholder="e.g., APARTMENT 4B - GREENVIEW HEIGHTS" 
+                          required
+                          value={createFormData.title}
+                          onChange={(e) => setCreateFormData({ ...createFormData, title: e.target.value })}
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor="input-desc">LEASE DESCRIPTION</label>
+                        <textarea 
+                          id="input-desc" 
+                          placeholder="Detail move-in dates, terms, or conditions..." 
+                          rows="6"
+                          value={createFormData.desc}
+                          onChange={(e) => setCreateFormData({ ...createFormData, desc: e.target.value })}
+                        />
+                      </div>
+
+                      <div className="form-grid form-grid-stack">
+                        <div className="form-group">
+                          <label htmlFor="input-landlord">LANDLORD PUBLIC KEY</label>
+                          <input 
+                            type="text" 
+                            id="input-landlord" 
+                            className="address-mono" 
+                            placeholder="GB..." 
+                            required
+                            value={createFormData.landlord}
+                            onChange={(e) => setCreateFormData({ ...createFormData, landlord: e.target.value })}
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label htmlFor="input-arbitrator">ARBITRATOR PUBLIC KEY</label>
+                          <input 
+                            type="text" 
+                            id="input-arbitrator" 
+                            className="address-mono" 
+                            placeholder="GA..." 
+                            required
+                            value={createFormData.arbitrator}
+                            onChange={(e) => setCreateFormData({ ...createFormData, arbitrator: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-grid">
+                        <div className="form-group">
+                          <label htmlFor="input-amount">DEPOSIT AMOUNT (XLM)</label>
+                          <input 
+                            type="number" 
+                            id="input-amount" 
+                            placeholder="e.g., 500" 
+                            required 
+                            min="1"
+                            value={createFormData.amount}
+                            onChange={(e) => setCreateFormData({ ...createFormData, amount: e.target.value })}
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label htmlFor="select-token">TOKEN ASSET</label>
+                          <select 
+                            id="select-token"
+                            value={createFormData.token}
+                            onChange={(e) => setCreateFormData({ ...createFormData, token: e.target.value })}
+                          >
+                            <option value="native">XLM (Native Stellar)</option>
+                            <option value="usdc">USDC (Stellar Anchor)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor="input-tenant-name">TENANT NAME (FOR NOTIFICATION)</label>
+                        <input 
+                          type="text" 
+                          id="input-tenant-name" 
+                          placeholder="Your Name" 
+                          required
+                          value={createFormData.tenantName}
+                          onChange={(e) => setCreateFormData({ ...createFormData, tenantName: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="input-landlord-name">LANDLORD NAME (FOR NOTIFICATION)</label>
+                        <input 
+                          type="text" 
+                          id="input-landlord-name" 
+                          placeholder="Landlord Name" 
+                          required
+                          value={createFormData.landlordName}
+                          onChange={(e) => setCreateFormData({ ...createFormData, landlordName: e.target.value })}
+                        />
+                      </div>
+
+                      <button type="submit" disabled={isCreating} className="btn btn-primary btn-full pill-btn">
+                        {isCreating ? 'PROPOSING LEASE INITIALIZATION...' : 'INITIALIZE ESCROW ON-CHAIN'}
+                      </button>
+                    </form>
+                  </div>
+                )}
+
+                {/* Manage / Interact Panel */}
+                {activeTab === 'manage' && (
+                  <div className="workspace-panel">
+                    <h2 className="section-title">ACTIVE INTERACTION</h2>
+                    <p className="section-desc">Search and load a lease escrow by its unique numeric Lease ID to perform actions.</p>
+
+                    <div className="search-box">
+                      <input 
+                        type="text" 
+                        className="address-mono" 
+                        placeholder="Enter Lease ID (e.g., 578129031)..."
+                        value={searchLeaseId}
+                        onChange={(e) => setSearchLeaseId(e.target.value)}
+                      />
+                      <button onClick={() => handleLoadEscrow(searchLeaseId)} className="btn btn-secondary pill-btn">LOAD</button>
+                    </div>
+
+                    {/* Simulation Error Panel */}
+                    {errorDetails && (
+                      <div className="info-banner error" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '0.75rem', padding: '1.25rem', borderRadius: '16px', background: 'rgba(255, 23, 68, 0.05)', border: '1px solid rgba(255, 23, 68, 0.15)', width: '100%' }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.9rem', letterSpacing: '0.05em', color: 'var(--color-error)' }}>
+                          ⚠️ ON-CHAIN SIMULATION ERROR
+                        </span>
+                        
+                        <div style={{ background: 'rgba(0, 0, 0, 0.2)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '0.75rem 1rem' }}>
+                          <span style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>LEASE ID</span>
+                          <span className="address-mono" style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-primary)' }}>{errorDetails.leaseId}</span>
+                        </div>
+
+                        <div style={{ background: 'rgba(0, 0, 0, 0.2)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '0.75rem 1rem' }}>
+                          <span style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>ERROR DETAIL</span>
+                          <p style={{ fontSize: '0.8rem', lineHeight: 1.5, color: 'var(--text-secondary)', margin: 0, wordBreak: 'break-word', whiteSpace: 'normal' }}>
+                            {errorDetails.message}. Make sure the lease has been initialized on-chain.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Escrow Details */}
+                    {activeEscrowDetails && (
+                      <div>
+                        <div className="loaded-escrow-header">
+                          <h3 className="escrow-title-text">{activeEscrowDetails.title}</h3>
+                          <span className={`badge-status ${
+                            activeEscrowDetails.status === 0 ? 'status-created' :
+                            activeEscrowDetails.status === 1 ? 'status-active' :
+                            activeEscrowDetails.status === 2 ? 'status-disputed' : 'status-released'
+                          }`}>
+                            {activeEscrowDetails.status === 0 ? 'UNFUNDED / CREATED' :
+                             activeEscrowDetails.status === 1 ? 'ACTIVE / LOCKED' :
+                             activeEscrowDetails.status === 2 ? 'DISPUTED' : 'RELEASED / CLOSED'}
+                          </span>
+                        </div>
+                        <p className="escrow-desc-text">{activeEscrowDetails.description}</p>
+
+                        {/* Visualizer columns */}
+                        <div className="transfer-visualizer">
+                          <div className="visual-col">
+                            <span className="visual-label">TENANT</span>
+                            <span className="address-mono text-truncate">{activeEscrowDetails.tenant}</span>
+                            <span className="visual-subtext">{activeEscrowDetails.tenantName}</span>
+                          </div>
+                          <div className="visual-divider">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M12 5v14M5 12h14"></path>
+                            </svg>
+                          </div>
+                          <div className="visual-col">
+                            <span className="visual-label">LANDLORD</span>
+                            <span className="address-mono text-truncate">{activeEscrowDetails.landlord}</span>
+                            <span className="visual-subtext">{activeEscrowDetails.landlordName}</span>
+                          </div>
+                        </div>
+
+                        {/* Escrow Stats */}
+                        <div className="escrow-stats">
+                          <div className="stat-item">
+                            <span className="stat-label">TOTAL ESCROW AMOUNT</span>
+                            <span className="address-mono stat-value">{`${activeEscrowDetails.amount} XLM`}</span>
+                          </div>
+                          <div className="stat-item">
+                            <span className="stat-label">LEASE ID</span>
+                            <span className="address-mono stat-value">{activeEscrowDetails.leaseId}</span>
+                          </div>
+                          <div className="stat-item">
+                            <span className="stat-label">SHARED CONTRACT</span>
+                            <span className="address-mono stat-value text-truncate">{activeEscrowDetails.address}</span>
+                          </div>
+                        </div>
+
+                        {/* Actions: Unfunded state */}
+                        {activeEscrowDetails.status === 0 && (
+                          <div className="action-section">
+                            <div className="info-banner warning">
+                              <span>Escrow initialized but funds are not deposited yet.</span>
+                            </div>
+                            <button 
+                              onClick={handleFundEscrow} 
+                              disabled={isFunding} 
+                              className="btn btn-primary btn-full pill-btn"
+                            >
+                              {isFunding ? 'FUNDING ESCROW ON-CHAIN...' : 'FUND ESCROW NOW (DEPOSIT)'}
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Actions: Active state */}
+                        {activeEscrowDetails.status === 1 && (
+                          <div className="action-section">
+                            <h4 className="action-heading">PROPOSE RELEASE SPLIT</h4>
+                            <p className="action-desc">Negotiate the refund. Enter the split. If landlord and tenant splits match, release executes automatically.</p>
+
+                            {/* Show details of existing split proposals */}
+                            {(activeEscrowDetails.tenantProposal || activeEscrowDetails.landlordProposal) && (
+                              <div className="info-banner success" style={{ marginBottom: '1.25rem', padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', textAlign: 'left', fontSize: '0.85rem' }}>
+                                  {activeEscrowDetails.tenantProposal && (
+                                    <span>
+                                      <strong>Tenant proposed:</strong> Tenant {Number(activeEscrowDetails.tenantProposal[0])} XLM / Landlord {Number(activeEscrowDetails.tenantProposal[1])} XLM
+                                    </span>
+                                  )}
+                                  {activeEscrowDetails.landlordProposal && (
+                                    <span>
+                                      <strong>Landlord proposed:</strong> Tenant {Number(activeEscrowDetails.landlordProposal[0])} XLM / Landlord {Number(activeEscrowDetails.landlordProposal[1])} XLM
+                                    </span>
+                                  )}
+                                  
+                                  {/* Conflicting proposals notice */}
+                                  {activeEscrowDetails.tenantProposal && activeEscrowDetails.landlordProposal && (
+                                    <span style={{ color: 'var(--color-error)', marginTop: '0.35rem', fontWeight: 600 }}>
+                                      ⚠️ Proposals Conflict. Negotiate to match splits or raise a dispute.
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Range Slider for proposals */}
+                            <div className="slider-container">
+                              <div className="slider-labels">
+                                <span>TO TENANT: <strong className="address-mono">{`${rangeSplitVal} XLM`}</strong></span>
+                                <span>TO LANDLORD: <strong className="address-mono">{`${activeEscrowDetails.amount - rangeSplitVal} XLM`}</strong></span>
+                              </div>
+                              <input 
+                                type="range" 
+                                min="0" 
+                                max={activeEscrowDetails.amount} 
+                                value={rangeSplitVal} 
+                                onChange={(e) => setRangeSplitVal(Number(e.target.value))}
+                                className="split-slider"
+                              />
+                            </div>
+
+                            <button 
+                              onClick={handleProposeSplit} 
+                              disabled={isProposing} 
+                              className="btn btn-primary btn-full pill-btn"
+                            >
+                              {isProposing ? 'SUBMITTING RELEASE PROPOSAL...' : 'SUBMIT RELEASE PROPOSAL'}
+                            </button>
+
+                            {/* Dispute raise */}
+                            <div className="dispute-trigger">
+                              <p className="action-desc">Disagreements? Initiate a formal dispute to request arbitrator resolution.</p>
+                              <div className="search-box">
+                                <input 
+                                  type="text" 
+                                  placeholder="State reason for dispute (e.g. damages)..."
+                                  value={disputeReasonInput}
+                                  onChange={(e) => setDisputeReasonInput(e.target.value)}
+                                />
+                                <button 
+                                  onClick={handleRaiseDispute} 
+                                  disabled={isRaisingDispute} 
+                                  className="btn btn-danger-outline pill-btn"
+                                >
+                                  {isRaisingDispute ? 'RAISING...' : 'RAISE DISPUTE'}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Actions: Disputed state */}
+                        {activeEscrowDetails.status === 2 && (
+                          <div className="action-section">
+                            <div className="info-banner error">
+                              <span>THIS ESCROW IS CURRENTLY DISPUTED</span>
+                              <p className="dispute-reason-txt">{`Reason: "${activeEscrowDetails.disputeReason}"`}</p>
+                            </div>
+
+                            {/* Arbitrator Decision controls */}
+                            {userAddress === activeEscrowDetails.arbitrator ? (
+                              <div>
+                                <h4 className="action-heading">ARBITRATOR TIE-BREAKER DECISION</h4>
+                                <p className="action-desc">You are the registered arbitrator. Decide final distribution split.</p>
+                                <div className="slider-container">
+                                  <div className="slider-labels">
+                                    <span>TO TENANT: <strong className="address-mono">{`${rangeArbVal} XLM`}</strong></span>
+                                    <span>TO LANDLORD: <strong className="address-mono">{`${activeEscrowDetails.amount - rangeArbVal} XLM`}</strong></span>
+                                  </div>
+                                  <input 
+                                    type="range" 
+                                    min="0" 
+                                    max={activeEscrowDetails.amount} 
+                                    value={rangeArbVal} 
+                                    onChange={(e) => setRangeArbVal(Number(e.target.value))}
+                                    className="split-slider"
+                                  />
+                                </div>
+                                <button 
+                                  onClick={handleResolveDispute} 
+                                  disabled={isResolving} 
+                                  className="btn btn-danger btn-full pill-btn"
+                                >
+                                  {isResolving ? 'RESOLVING DISPUTE...' : 'EXECUTE ARBITRATOR RESOLUTION'}
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="non-arbitrator-msg">
+                                Waiting for Delhi Housing Authority (Arbitrator) to review evidence and submit split.
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Actions: Released state */}
+                        {activeEscrowDetails.status === 3 && (
+                          <div className="action-section">
+                            <div className="info-banner success" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem', padding: '1.25rem' }}>
+                              <span style={{ fontWeight: 700 }}>ESCROW RELEASED & RESOLVED SUCCESSFULLY</span>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                <p style={{ margin: 0, fontSize: '0.85rem' }}>Funds sent back to accounts.</p>
+                                <button onClick={() => setActivePage('dashboard')} className="btn btn-primary pill-btn" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', border: 'none', fontWeight: 600 }}>
+                                  Check Dashboard
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* Page 2: Dashboard Section */}
+        {activePage === 'dashboard' && (
+          <div className="page-section">
+            <div className="workspace-grid bento-grid">
+              
+              {/* Platform Metrics Card */}
+              <div className="bento-card bento-card-metrics" style={{ gridColumn: 'span 1', gridRow: 'span 3' }}>
+                <h2 className="section-title">PLATFORM PERFORMANCE</h2>
+                <p className="section-desc">Real-time stats across all smart contract instances.</p>
+
+                <div className="metrics-stack">
+                  <div className="metric-item">
+                    <span className="metric-label">TOTAL VOLUME LOCKED</span>
+                    <span className="address-mono metric-value">{`${metrics.tvl} XLM`}</span>
+                  </div>
+                  <div className="metric-item">
+                    <span className="metric-label">ACTIVE CONTRACTS</span>
+                    <span className="address-mono metric-value">{metrics.activeCount}</span>
+                  </div>
+                  <div className="metric-item">
+                    <span className="metric-label">TOTAL RESOLVED LEASES</span>
+                    <span className="address-mono metric-value">{metrics.resolvedCount}</span>
+                  </div>
+                  <div className="metric-item">
+                    <span className="metric-label">ON-CHAIN DISPUTES</span>
+                    <span className="address-mono metric-value">{metrics.disputeCount}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Escrow Dashboard */}
+              <div className="bento-card bento-card-dashboard" style={{ gridColumn: 'span 2', gridRow: 'span 3' }}>
+                <h2 className="section-title">ACTIVE AGENTS / PLATFORM DASHBOARD</h2>
+                <p className="section-desc">Current escrows tracked by the platform backend coordinator.</p>
+
+                <div className="escrow-list">
+                  {!userAddress ? (
+                    <div className="dashboard-placeholder">Please connect your wallet to view your active escrows.</div>
+                  ) : dashboardEscrows.length === 0 ? (
+                    <div className="dashboard-placeholder">No active escrows registered for this wallet.</div>
+                  ) : (
+                    dashboardEscrows.map(escrow => (
+                      <div 
+                        key={escrow.leaseId} 
+                        className="escrow-row" 
+                        onClick={() => {
+                          setActivePage('workspace');
+                          setActiveTab('manage');
+                          setSearchLeaseId(escrow.leaseId);
+                          handleLoadEscrow(escrow.leaseId);
+                        }}
+                      >
+                        <div className="escrow-row-meta">
+                          <span className="escrow-row-title">{escrow.title}</span>
+                          <span className="escrow-row-address address-mono text-truncate">{`Lease ID: ${escrow.leaseId}`}</span>
+                        </div>
+                        <div className="escrow-row-stats">
+                          <span className="escrow-row-amount address-mono">{escrow.amount}</span>
+                          <span className={`badge-status ${getStatusBadgeClass(escrow.status)}`}>{escrow.status.toUpperCase()}</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* Page 3: Documentation Section */}
+        {activePage === 'docs' && (
+          <div className="page-section">
+            <div className="workspace-grid bento-grid">
+              
+              {/* Smart Contract Overview */}
+              <div className="bento-card bento-card-docs-intro" style={{ gridColumn: 'span 2', gridRow: 'span 3' }}>
+                <h2 className="section-title">SOROBAN SMART ESCROW SPECIFICATION</h2>
+                <p className="section-desc">Technical layout of the cryptographic rental deposit protocol.</p>
+                <div className="docs-content">
+                  <p className="docs-paragraph">
+                    Deposhield uses dedicated, WASM-compiled smart contract instances deployed to the <strong>Stellar Soroban Network</strong>.
+                    By committing security deposits directly to code logic rather than a single entity, the platform ensures trustless, neutral dispute backstops.
+                  </p>
+                  <h3 className="docs-subheading">Escrow Role Permissions</h3>
+                  <div className="role-grid">
+                    <div className="role-card tenant">
+                      <span className="role-badge">TENANT</span>
+                      <p className="role-desc">Funds the escrow on-chain. Submits move-out refund split proposals. Can trigger formal arbitrator disputes.</p>
+                    </div>
+                    <div className="role-card landlord">
+                      <span className="role-badge landlord">LANDLORD</span>
+                      <p className="role-desc">Notified of lease funding. Proposes split refunds. Reclaims allocated damages once splits match.</p>
+                    </div>
+                    <div className="role-card arbitrator">
+                      <span className="role-badge arbitrator">ARBITRATOR</span>
+                      <p className="role-desc">Acts as a neutral third-party key-holder. Resolves active disputes by submitting the final distribution split.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Lifecycle Steps Guide */}
+              <div className="bento-card bento-card-docs-steps" style={{ gridColumn: 'span 1', gridRow: 'span 3' }}>
+                <h2 className="section-title">ESCROW LIFECYCLE</h2>
+                <p className="section-desc">Stages of contract progression on-chain.</p>
+                <div className="lifecycle-timeline">
+                  <div className="timeline-step">
+                    <div className="step-num">1</div>
+                    <div className="step-info">
+                      <h4>INITIALIZE</h4>
+                      <p>Deploy and initialize the lease contract on-chain with parties keys.</p>
+                    </div>
+                  </div>
+                  <div className="timeline-step">
+                    <div className="step-num">2</div>
+                    <div className="step-info">
+                      <h4>FUND DEPOSIT</h4>
+                      <p>Tenant transfers the deposit amount to contract secure custody.</p>
+                    </div>
+                  </div>
+                  <div className="timeline-step">
+                    <div className="step-num">3</div>
+                    <div className="step-info">
+                      <h4>NEGOTIATE SPLIT</h4>
+                      <p>Submit matching split proposals. Once splits match, payouts execute.</p>
+                    </div>
+                  </div>
+                  <div className="timeline-step">
+                    <div className="step-num">4</div>
+                    <div className="step-info">
+                      <h4>RESOLVE DISPUTE</h4>
+                      <p>If negotiation stalls, the arbitrator breaks the tie to release funds.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Examples Card */}
+              <div className="bento-card bento-card-docs-examples" style={{ gridColumn: 'span 3', marginTop: '1rem' }}>
+                <h2 className="section-title">DETAILED USER WALKTHROUGH EXAMPLES</h2>
+                <p className="section-desc">Practical usage scenarios demonstrating trustless deposit negotiation and arbitration.</p>
+                
+                <div className="docs-content" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
+                  
+                  {/* Example 1: Without Arbitrator */}
+                  <div style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '1.5rem' }}>
+                    <h3 style={{ color: 'var(--color-success)', fontFamily: 'var(--font-sans)', fontSize: '1rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: 0 }}>
+                      🤝 EXAMPLE 1: MUTUAL RELEASE (NO ARBITRATOR)
+                    </h3>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '1rem' }}>
+                      Best suited for standard move-outs where tenant and landlord are in agreement regarding refund splits (e.g., minor wear-and-tear deductions).
+                    </p>
+                    <ol style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.6, paddingLeft: '1.15rem', margin: 0 }}>
+                      <li><strong>Deploy Lease:</strong> Tenant connects via Account 1, enters Landlord and Arbitrator keys under CREATE ESCROW, locks amount, and clicks Initialize to generate a unique Lease ID.</li>
+                      <li><strong>Lock Funds:</strong> Tenant goes to MANAGE ESCROW, loads the Lease ID, and clicks FUND ESCROW NOW. Funds lock inside the contract.</li>
+                      <li><strong>Tenant Proposes Split:</strong> At move-out, Tenant proposes a split refund via the split slider and signs.</li>
+                      <li><strong>Landlord Matches Split:</strong> Landlord switches wallet to Account 2, connects, loads same Lease ID, drags slider to match split, and submits.</li>
+                      <li><strong>Instant Payout:</strong> Contract detects matching splits, immediately transfers splits on-chain, and closes the lease.</li>
+                    </ol>
+                  </div>
+
+                  {/* Example 2: With Arbitrator */}
+                  <div style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '1.5rem' }}>
+                    <h3 style={{ color: 'var(--color-error)', fontFamily: 'var(--font-sans)', fontSize: '1rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: 0 }}>
+                      ⚖️ EXAMPLE 2: DISPUTED RESOLUTION (WITH ARBITRATOR)
+                    </h3>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '1rem' }}>
+                      Best suited for conflicts where negotiations fail (e.g., landlord claims major paint/cleaning damage and refuses a partial refund).
+                    </p>
+                    <ol style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.6, paddingLeft: '1.15rem', margin: 0 }}>
+                      <li><strong>Setup & Fund:</strong> Tenant initializes and funds the lease using the steps in Example 1.</li>
+                      <li><strong>Conflicting Proposals:</strong> Tenant proposes a 90/10 split. Landlord disagrees and proposes a 30/70 split. The interface locks input sliders and displays a "Proposals Conflict" error warning.</li>
+                      <li><strong>Declare Dispute:</strong> Tenant or Landlord types a reason under RAISE DISPUTE and submits. Contract status locks to DISPUTED.</li>
+                      <li><strong>Arbitrator Verdict:</strong> Arbitrator switches wallet to Account 3, connects, and loads the Lease ID. The Arbitrator-only decision slider reveals.</li>
+                      <li><strong>Final Payout:</strong> The neutral Arbitrator sets the final split and clicks RESOLVE DISPUTE. The contract executes payouts and closes.</li>
+                    </ol>
+                  </div>
+                  
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+      </main>
+
+      <footer className="footer">
+        <div className="footer-inner">
+          <span>DEPOSHIELD POWERED BY STELLAR SOROBAN SMART CONTRACT PROTOCOL</span>
+          <a 
+            href={`https://stellar.expert/explorer/testnet/contract/${DEFAULT_CONTRACT_ID}`} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="btn btn-secondary pill-btn footer-btn" 
+            style={{ padding: '0.45rem 1rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontFamily: 'var(--font-mono)', border: '1px solid var(--border-color)', textDecoration: 'none', borderRadius: '20px' }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+            VIEW SHARED CONTRACT
+          </a>
+          <div className="status-indicator">
+            <span className="status-dot green"></span>
+            <span className="status-text font-mono">TESTNET ONLINE</span>
+          </div>
+        </div>
+      </footer>
+
+      {/* Web3 Toast Notifications */}
+      <div className="toast-container">
+        {toasts.map(toast => (
+          <div key={toast.id} className={`toast ${toast.type} show`}>
+            <span className="toast-icon">
+              {toast.type === 'success' && (
+                <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+              )}
+              {toast.type === 'error' && (
+                <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-error)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                  <line x1="12" y1="9" x2="12" y2="13"></line>
+                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+              )}
+              {toast.type === 'info' && (
+                <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-info)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="16" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+              )}
+            </span>
+            <span className="toast-message">{toast.message}</span>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+export default App;
