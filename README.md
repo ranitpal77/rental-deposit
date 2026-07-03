@@ -6,6 +6,7 @@
 ![Stellar](https://img.shields.io/badge/stellar-%23EF3B49.svg?style=for-the-badge&logo=stellar&logoColor=white)
 ![Soroban](https://img.shields.io/badge/soroban-%232D79C7.svg?style=for-the-badge)
 
+
 ## 📖 The Stellar Advantage: Beyond Hand-to-Hand Cash
 **Deposhield** is a trustless, decentralized security deposit escrow platform built on the Stellar network using Soroban smart contracts. In informal or emerging rental markets across India, Latin America, and Africa, security deposits represent 1 to 3 months' rent. Handing cash directly to landlords frequently leads to unfair withholding at move-out, while traditional bank escrows are slow, expensive, or unavailable. 
 

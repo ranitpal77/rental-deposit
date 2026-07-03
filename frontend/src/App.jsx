@@ -370,25 +370,37 @@ function App() {
         simulateCall(contractId, 'get_status', [leaseIdVal])
       ]);
 
-      const amountVal = Number(amountValRaw);
+      const amountVal = Number(amountValRaw) / 10_000_000;
       const status = Number(statusRaw); // 0=Created, 1=Active, 2=Disputed, 3=Released
 
       // Fetch proposals
       let tenantProposal = null;
       let landlordProposal = null;
       try {
-        tenantProposal = await simulateCall(contractId, 'get_proposal', [
+        const rawTenantProposal = await simulateCall(contractId, 'get_proposal', [
           leaseIdVal,
           nativeToScVal(tenantAddr, { type: 'address' })
         ]);
+        if (rawTenantProposal) {
+          tenantProposal = [
+            Number(rawTenantProposal[0]) / 10_000_000,
+            Number(rawTenantProposal[1]) / 10_000_000
+          ];
+        }
       } catch (e) {
         console.warn('Failed to fetch tenant proposal:', e);
       }
       try {
-        landlordProposal = await simulateCall(contractId, 'get_proposal', [
+        const rawLandlordProposal = await simulateCall(contractId, 'get_proposal', [
           leaseIdVal,
           nativeToScVal(landlordAddr, { type: 'address' })
         ]);
+        if (rawLandlordProposal) {
+          landlordProposal = [
+            Number(rawLandlordProposal[0]) / 10_000_000,
+            Number(rawLandlordProposal[1]) / 10_000_000
+          ];
+        }
       } catch (e) {
         console.warn('Failed to fetch landlord proposal:', e);
       }
@@ -481,7 +493,7 @@ function App() {
         nativeToScVal(landlord, { type: 'address' }),
         nativeToScVal(arbitrator, { type: 'address' }),
         nativeToScVal(tokenAddress, { type: 'address' }),
-        nativeToScVal(BigInt(amount), { type: 'i128' })
+        nativeToScVal(BigInt(Math.floor(parseFloat(amount) * 10_000_000)), { type: 'i128' })
       ];
 
       await executeTx(contractAddress, 'initialize', args);
@@ -600,8 +612,8 @@ function App() {
       const args = [
         leaseIdVal,
         nativeToScVal(userAddress, { type: 'address' }),
-        nativeToScVal(BigInt(tenantAmt), { type: 'i128' }),
-        nativeToScVal(BigInt(landlordAmt), { type: 'i128' })
+        nativeToScVal(BigInt(Math.floor(tenantAmt * 10_000_000)), { type: 'i128' }),
+        nativeToScVal(BigInt(Math.floor(landlordAmt * 10_000_000)), { type: 'i128' })
       ];
 
       await executeTx(activeEscrowDetails.address, 'propose_release', args);
@@ -724,8 +736,8 @@ function App() {
       const leaseId = BigInt(leaseIdStr);
       const args = [
         nativeToScVal(leaseId, { type: 'u64' }),
-        nativeToScVal(BigInt(tenantAmt), { type: 'i128' }),
-        nativeToScVal(BigInt(landlordAmt), { type: 'i128' })
+        nativeToScVal(BigInt(Math.floor(tenantAmt * 10_000_000)), { type: 'i128' }),
+        nativeToScVal(BigInt(Math.floor(landlordAmt * 10_000_000)), { type: 'i128' })
       ];
 
       await executeTx(activeEscrowDetails.address, 'resolve_dispute', args);
@@ -1137,7 +1149,7 @@ function App() {
                         <div className="escrow-stats">
                           <div className="stat-item">
                             <span className="stat-label">TOTAL ESCROW AMOUNT</span>
-                            <span className="address-mono stat-value">{`${activeEscrowDetails.amount} XLM`}</span>
+                            <span className="address-mono stat-value">{`${Number(activeEscrowDetails.amount).toFixed(7)} XLM`}</span>
                           </div>
                           <div className="stat-item">
                             <span className="stat-label">LEASE ID</span>
@@ -1177,12 +1189,12 @@ function App() {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', textAlign: 'left', fontSize: '0.85rem' }}>
                                   {activeEscrowDetails.tenantProposal && (
                                     <span>
-                                      <strong>Tenant proposed:</strong> Tenant {Number(activeEscrowDetails.tenantProposal[0])} XLM / Landlord {Number(activeEscrowDetails.tenantProposal[1])} XLM
+                                      <strong>Tenant proposed:</strong> Tenant {Number(activeEscrowDetails.tenantProposal[0]).toFixed(7)} XLM / Landlord {Number(activeEscrowDetails.tenantProposal[1]).toFixed(7)} XLM
                                     </span>
                                   )}
                                   {activeEscrowDetails.landlordProposal && (
                                     <span>
-                                      <strong>Landlord proposed:</strong> Tenant {Number(activeEscrowDetails.landlordProposal[0])} XLM / Landlord {Number(activeEscrowDetails.landlordProposal[1])} XLM
+                                      <strong>Landlord proposed:</strong> Tenant {Number(activeEscrowDetails.landlordProposal[0]).toFixed(7)} XLM / Landlord {Number(activeEscrowDetails.landlordProposal[1]).toFixed(7)} XLM
                                     </span>
                                   )}
                                   
@@ -1199,8 +1211,8 @@ function App() {
                             {/* Range Slider for proposals */}
                             <div className="slider-container">
                               <div className="slider-labels">
-                                <span>TO TENANT: <strong className="address-mono">{`${rangeSplitVal} XLM`}</strong></span>
-                                <span>TO LANDLORD: <strong className="address-mono">{`${activeEscrowDetails.amount - rangeSplitVal} XLM`}</strong></span>
+                                <span>TO TENANT: <strong className="address-mono">{`${Number(rangeSplitVal).toFixed(7)} XLM`}</strong></span>
+                                <span>TO LANDLORD: <strong className="address-mono">{`${Number(activeEscrowDetails.amount - rangeSplitVal).toFixed(7)} XLM`}</strong></span>
                               </div>
                               <input 
                                 type="range" 
@@ -1257,8 +1269,8 @@ function App() {
                                 <p className="action-desc">You are the registered arbitrator. Decide final distribution split.</p>
                                 <div className="slider-container">
                                   <div className="slider-labels">
-                                    <span>TO TENANT: <strong className="address-mono">{`${rangeArbVal} XLM`}</strong></span>
-                                    <span>TO LANDLORD: <strong className="address-mono">{`${activeEscrowDetails.amount - rangeArbVal} XLM`}</strong></span>
+                                    <span>TO TENANT: <strong className="address-mono">{`${Number(rangeArbVal).toFixed(7)} XLM`}</strong></span>
+                                    <span>TO LANDLORD: <strong className="address-mono">{`${Number(activeEscrowDetails.amount - rangeArbVal).toFixed(7)} XLM`}</strong></span>
                                   </div>
                                   <input 
                                     type="range" 
