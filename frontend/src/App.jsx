@@ -22,7 +22,29 @@ if (typeof window !== 'undefined') {
 const RPC_URL = 'https://soroban-testnet.stellar.org:443';
 const NETWORK_PASSPHRASE = Networks.TESTNET;
 const BACKEND_URL = 'http://localhost:5000';
-const DEFAULT_CONTRACT_ID = 'CAEU7RHIOMDWODUF7VVFVXPDE7PKO4HY7ERT7KKFN3MBTUW2JAWVUM6X';
+const DEFAULT_CONTRACT_ID = 'CBFWKP6V6STIVM4YH56JWHCKZY6KKGG3PQ7CVBK3JF2GUBDCO2OHKG2K';
+
+const PREDEFINED_DURATIONS = [
+  30,          // 30 seconds (for testing)
+  300,         // 5 minutes
+  3600,        // 1 hour
+  86400,       // 1 day
+  604800,      // 1 week
+  2592000,     // 1 month (30 days)
+  15552000,    // 6 months
+  31104000     // 1 year (360 days)
+];
+
+const PREDEFINED_DURATION_LABELS = [
+  '30 Seconds (Test)',
+  '5 Minutes',
+  '1 Hour',
+  '1 Day',
+  '1 Week',
+  '1 Month',
+  '6 Months',
+  '1 Year'
+];
 
 const rpcServer = new Server(RPC_URL);
 
@@ -72,6 +94,71 @@ function App() {
     tenantName: '',
     landlordName: ''
   });
+
+  // Time-lock State
+  const [unlockDateTime, setUnlockDateTime] = useState('');
+  const [lockDurationSeconds, setLockDurationSeconds] = useState(30); // Default to 30s
+  const [quickDurationIndex, setQuickDurationIndex] = useState(0); // Index 0 (30s)
+
+  // Synchronizers
+  const syncFromDuration = useCallback((seconds) => {
+    const secs = Number(seconds) || 0;
+    setLockDurationSeconds(secs);
+    
+    // Calculate unlock date-time
+    const targetTime = Date.now() + secs * 1000;
+    // Format to local date-time string YYYY-MM-DDTHH:MM
+    const dateObj = new Date(targetTime);
+    const tzOffset = dateObj.getTimezoneOffset() * 60000; // offset in milliseconds
+    const localISOTime = (new Date(targetTime - tzOffset)).toISOString().slice(0, 16);
+    setUnlockDateTime(localISOTime);
+
+    // Find closest index in predefined durations
+    let closestIndex = 0;
+    let minDiff = Infinity;
+    PREDEFINED_DURATIONS.forEach((d, idx) => {
+      const diff = Math.abs(d - secs);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestIndex = idx;
+      }
+    });
+    setQuickDurationIndex(closestIndex);
+  }, []);
+
+  const syncFromDateTime = useCallback((dateTimeStr) => {
+    if (!dateTimeStr) return;
+    setUnlockDateTime(dateTimeStr);
+    const selectMs = new Date(dateTimeStr).getTime();
+    const seconds = Math.max(0, Math.floor((selectMs - Date.now()) / 1000));
+    setLockDurationSeconds(seconds);
+
+    // Find closest index in predefined durations
+    let closestIndex = 0;
+    let minDiff = Infinity;
+    PREDEFINED_DURATIONS.forEach((d, idx) => {
+      const diff = Math.abs(d - seconds);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestIndex = idx;
+      }
+    });
+    setQuickDurationIndex(closestIndex);
+  }, []);
+
+  const syncFromSlider = useCallback((index) => {
+    const idx = Number(index);
+    setQuickDurationIndex(idx);
+    const seconds = PREDEFINED_DURATIONS[idx];
+    syncFromDuration(seconds);
+  }, [syncFromDuration]);
+
+  // Initial Sync on Mount
+  useEffect(() => {
+    if (activeTab === 'create' && !unlockDateTime) {
+      syncFromDuration(30); // Default to 30 seconds
+    }
+  }, [activeTab, unlockDateTime, syncFromDuration]);
 
   // Action Buttons Loading State
   const [isCreating, setIsCreating] = useState(false);
@@ -361,17 +448,19 @@ function App() {
       const contractId = DEFAULT_CONTRACT_ID;
 
       // Parallel simulated RPC calls
-      const [tenantAddr, landlordAddr, arbitratorAddr, amountValRaw, isFunded, statusRaw] = await Promise.all([
+      const [tenantAddr, landlordAddr, arbitratorAddr, amountValRaw, isFunded, statusRaw, unlockTimeRaw] = await Promise.all([
         simulateCall(contractId, 'get_tenant', [leaseIdVal]),
         simulateCall(contractId, 'get_landlord', [leaseIdVal]),
         simulateCall(contractId, 'get_arbitrator', [leaseIdVal]),
         simulateCall(contractId, 'get_amount', [leaseIdVal]),
         simulateCall(contractId, 'is_funded', [leaseIdVal]),
-        simulateCall(contractId, 'get_status', [leaseIdVal])
+        simulateCall(contractId, 'get_status', [leaseIdVal]),
+        simulateCall(contractId, 'get_unlock_time', [leaseIdVal])
       ]);
 
       const amountVal = Number(amountValRaw) / 10_000_000;
       const status = Number(statusRaw); // 0=Created, 1=Active, 2=Disputed, 3=Released
+      const unlockTime = Number(unlockTimeRaw);
 
       // Fetch proposals
       let tenantProposal = null;
@@ -431,7 +520,8 @@ function App() {
         description: metadata.description,
         tenantProposal,
         landlordProposal,
-        disputeReason
+        disputeReason,
+        unlockTime
       };
 
       setActiveEscrowDetails(detailsObj);
@@ -487,13 +577,16 @@ function App() {
 
       console.log('Initializing escrow contract', contractAddress, 'with Lease ID', leaseIdStr);
       
+      const unlockTimestamp = Math.floor(Date.now() / 1000) + Number(lockDurationSeconds);
+
       const args = [
         nativeToScVal(leaseId, { type: 'u64' }),
         nativeToScVal(tenant, { type: 'address' }), // tenant address from form
         nativeToScVal(userAddress, { type: 'address' }), // landlord (connected userAddress)
         nativeToScVal(arbitrator, { type: 'address' }),
         nativeToScVal(tokenAddress, { type: 'address' }),
-        nativeToScVal(BigInt(Math.floor(parseFloat(amount) * 10_000_000)), { type: 'i128' })
+        nativeToScVal(BigInt(Math.floor(parseFloat(amount) * 10_000_000)), { type: 'i128' }),
+        nativeToScVal(BigInt(unlockTimestamp), { type: 'u64' }) // u64 unlock_time
       ];
 
       await executeTx(contractAddress, 'initialize', args);
@@ -513,6 +606,7 @@ function App() {
         status: 'Created',
         title,
         description: desc,
+        unlockTime: unlockTimestamp,
         history: [
           { timestamp: new Date().toISOString(), event: 'Escrow Created & Initialized' }
         ]
@@ -1041,6 +1135,71 @@ function App() {
                         </div>
                       </div>
 
+                      {/* Escrow Lock Duration Options */}
+                      <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem', padding: '1.25rem', border: '1px solid var(--border-color)', borderRadius: '16px', background: 'rgba(255,255,255,0.01)' }}>
+                        <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-primary)', marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem' }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-primary)' }}>
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                          </svg>
+                          SECURITY DEPOSIT TIME-LOCK CONFIGURATION
+                        </h4>
+
+                        <div className="form-grid" style={{ marginBottom: '1.25rem' }}>
+                          <div className="form-group">
+                            <label htmlFor="input-unlock-time">UNLOCK DATE & TIME</label>
+                            <input 
+                              type="datetime-local" 
+                              id="input-unlock-time" 
+                              required
+                              value={unlockDateTime}
+                              onChange={(e) => syncFromDateTime(e.target.value)}
+                            />
+                          </div>
+
+                          <div className="form-group">
+                            <label htmlFor="input-lock-seconds">LOCK DURATION (SECONDS)</label>
+                            <input 
+                              type="number" 
+                              id="input-lock-seconds" 
+                              placeholder="e.g., 86400" 
+                              required
+                              min="1"
+                              value={lockDurationSeconds === 0 ? '0' : Number(lockDurationSeconds).toString()}
+                              onChange={(e) => syncFromDuration(e.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                            <label style={{ margin: 0 }}>QUICK LOCK DURATION SELECTOR</label>
+                            <span className="address-mono" style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600 }}>
+                              {PREDEFINED_DURATION_LABELS[quickDurationIndex]} ({lockDurationSeconds.toLocaleString()} seconds)
+                            </span>
+                          </div>
+                          <input 
+                            type="range" 
+                            min="0" 
+                            max="7" 
+                            value={quickDurationIndex} 
+                            onChange={(e) => syncFromSlider(e.target.value)}
+                            className="split-slider"
+                            style={{ margin: '0.5rem 0' }}
+                          />
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                            <span>30s</span>
+                            <span>5m</span>
+                            <span>1h</span>
+                            <span>1d</span>
+                            <span>1w</span>
+                            <span>1m</span>
+                            <span>6m</span>
+                            <span>1y</span>
+                          </div>
+                        </div>
+                      </div>
+
                       <div className="form-group">
                         <label htmlFor="input-tenant-name">TENANT NAME (FOR NOTIFICATION)</label>
                         <input 
@@ -1110,8 +1269,10 @@ function App() {
                     )}
 
                     {/* Escrow Details */}
-                    {activeEscrowDetails && (
-                      <div>
+                    {activeEscrowDetails && (() => {
+                      const isLocked = activeEscrowDetails.unlockTime * 1000 > Date.now();
+                      return (
+                        <div>
                         <div className="loaded-escrow-header">
                           <h3 className="escrow-title-text">{activeEscrowDetails.title}</h3>
                           <span className={`badge-status ${
@@ -1214,6 +1375,22 @@ function App() {
                                 <span>TO TENANT: <strong className="address-mono">{`${Number(rangeSplitVal).toFixed(7)} XLM`}</strong></span>
                                 <span>TO LANDLORD: <strong className="address-mono">{`${Number(activeEscrowDetails.amount - rangeSplitVal).toFixed(7)} XLM`}</strong></span>
                               </div>
+                              {/* Locked banner */}
+                              {isLocked && (
+                                <div className="info-banner warning" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1.25rem', borderRadius: '16px', border: '1px solid rgba(255, 179, 0, 0.25)', background: 'rgba(255, 179, 0, 0.05)', marginBottom: '1.5rem' }}>
+                                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#ffb300', flexShrink: 0 }}>
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                  </svg>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', textAlign: 'left' }}>
+                                    <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#ffb300', letterSpacing: '0.05em' }}>FUNDS DEPOSIT TIME-LOCKED</span>
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                      This escrow agreement is locked for the lease contract duration. You can propose or release splits starting on <strong>{new Date(activeEscrowDetails.unlockTime * 1000).toLocaleString()}</strong>.
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+
                               <input 
                                 type="range" 
                                 min="0" 
@@ -1221,15 +1398,18 @@ function App() {
                                 value={rangeSplitVal} 
                                 onChange={(e) => setRangeSplitVal(Number(e.target.value))}
                                 className="split-slider"
+                                disabled={isLocked}
+                                style={isLocked ? { cursor: 'not-allowed', opacity: 0.5 } : {}}
                               />
                             </div>
 
                             <button 
                               onClick={handleProposeSplit} 
-                              disabled={isProposing} 
+                              disabled={isProposing || isLocked} 
                               className="btn btn-primary btn-full pill-btn"
+                              style={isLocked ? { cursor: 'not-allowed', opacity: 0.7 } : {}}
                             >
-                              {isProposing ? 'SUBMITTING RELEASE PROPOSAL...' : 'SUBMIT RELEASE PROPOSAL'}
+                              {isProposing ? 'SUBMITTING RELEASE PROPOSAL...' : isLocked ? 'RELEASE LOCK ACTIVE' : 'SUBMIT RELEASE PROPOSAL'}
                             </button>
 
                             {/* Dispute raise */}
@@ -1272,6 +1452,22 @@ function App() {
                                     <span>TO TENANT: <strong className="address-mono">{`${Number(rangeArbVal).toFixed(7)} XLM`}</strong></span>
                                     <span>TO LANDLORD: <strong className="address-mono">{`${Number(activeEscrowDetails.amount - rangeArbVal).toFixed(7)} XLM`}</strong></span>
                                   </div>
+                                  {/* Locked banner */}
+                                  {isLocked && (
+                                    <div className="info-banner warning" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1.25rem', borderRadius: '16px', border: '1px solid rgba(255, 179, 0, 0.25)', background: 'rgba(255, 179, 0, 0.05)', marginTop: '1.25rem', marginBottom: '1.25rem' }}>
+                                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#ffb300', flexShrink: 0 }}>
+                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                      </svg>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', textAlign: 'left' }}>
+                                        <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#ffb300', letterSpacing: '0.05em' }}>ARBITRATION LOCK ACTIVE</span>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                          The dispute cannot be resolved until the contract locks expire on <strong>{new Date(activeEscrowDetails.unlockTime * 1000).toLocaleString()}</strong>.
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+
                                   <input 
                                     type="range" 
                                     min="0" 
@@ -1279,14 +1475,17 @@ function App() {
                                     value={rangeArbVal} 
                                     onChange={(e) => setRangeArbVal(Number(e.target.value))}
                                     className="split-slider"
+                                    disabled={isLocked}
+                                    style={isLocked ? { cursor: 'not-allowed', opacity: 0.5 } : {}}
                                   />
                                 </div>
                                 <button 
                                   onClick={handleResolveDispute} 
-                                  disabled={isResolving} 
+                                  disabled={isResolving || isLocked} 
                                   className="btn btn-danger btn-full pill-btn"
+                                  style={isLocked ? { cursor: 'not-allowed', opacity: 0.7 } : {}}
                                 >
-                                  {isResolving ? 'RESOLVING DISPUTE...' : 'EXECUTE ARBITRATOR RESOLUTION'}
+                                  {isResolving ? 'RESOLVING DISPUTE...' : isLocked ? 'ARBITRATION LOCKED' : 'EXECUTE ARBITRATOR RESOLUTION'}
                                 </button>
                               </div>
                             ) : (
@@ -1312,8 +1511,9 @@ function App() {
                           </div>
                         )}
 
-                      </div>
-                    )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>

@@ -15,6 +15,7 @@ pub enum DataKey {
     Status(u64), // 0 = Created, 1 = Active, 2 = Disputed, 3 = Released
     DisputeReason(u64),
     Proposal(u64, Address),
+    UnlockTime(u64),
 }
 
 #[contract]
@@ -30,6 +31,7 @@ impl EscrowContract {
         arbitrator: Address,
         token: Address,
         amount: i128,
+        unlock_time: u64,
     ) {
         landlord.require_auth();
 
@@ -48,6 +50,7 @@ impl EscrowContract {
         env.storage().persistent().set(&DataKey::Amount(lease_id), &amount);
         env.storage().persistent().set(&DataKey::IsFunded(lease_id), &false);
         env.storage().persistent().set(&DataKey::Status(lease_id), &0u32); // Created
+        env.storage().persistent().set(&DataKey::UnlockTime(lease_id), &unlock_time);
     }
 
     pub fn fund(env: Env, lease_id: u64) {
@@ -77,6 +80,11 @@ impl EscrowContract {
 
     pub fn propose_release(env: Env, lease_id: u64, caller: Address, tenant_amount: i128, landlord_amount: i128) {
         caller.require_auth();
+
+        let unlock_time: u64 = env.storage().persistent().get(&DataKey::UnlockTime(lease_id)).unwrap_or(0);
+        if env.ledger().timestamp() < unlock_time {
+            panic!("Escrow funds are locked until the unlock time");
+        }
 
         let tenant: Address = env.storage().persistent().get(&DataKey::Tenant(lease_id)).expect("Lease not initialized");
         let landlord: Address = env.storage().persistent().get(&DataKey::Landlord(lease_id)).unwrap();
@@ -171,6 +179,11 @@ impl EscrowContract {
         let arbitrator: Address = env.storage().persistent().get(&DataKey::Arbitrator(lease_id)).expect("Lease not initialized");
         arbitrator.require_auth();
 
+        let unlock_time: u64 = env.storage().persistent().get(&DataKey::UnlockTime(lease_id)).unwrap_or(0);
+        if env.ledger().timestamp() < unlock_time {
+            panic!("Escrow funds are locked until the unlock time");
+        }
+
         let status: u32 = env.storage().persistent().get(&DataKey::Status(lease_id)).unwrap();
         if status != 2 {
             panic!("Escrow is not in disputed state");
@@ -240,6 +253,10 @@ impl EscrowContract {
 
     pub fn get_proposal(env: Env, lease_id: u64, party: Address) -> Option<(i128, i128)> {
         env.storage().persistent().get(&DataKey::Proposal(lease_id, party))
+    }
+
+    pub fn get_unlock_time(env: Env, lease_id: u64) -> u64 {
+        env.storage().persistent().get(&DataKey::UnlockTime(lease_id)).unwrap_or(0)
     }
 }
 
