@@ -31,6 +31,8 @@ impl EscrowContract {
         token: Address,
         amount: i128,
     ) {
+        landlord.require_auth();
+
         if env.storage().persistent().has(&DataKey::Tenant(lease_id)) {
             panic!("Lease ID already exists");
         }

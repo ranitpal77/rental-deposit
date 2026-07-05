@@ -65,7 +65,7 @@ function App() {
   const [createFormData, setCreateFormData] = useState({
     title: '',
     desc: '',
-    landlord: '',
+    tenant: '',
     arbitrator: '',
     amount: '',
     token: 'native',
@@ -471,7 +471,7 @@ function App() {
       return;
     }
 
-    const { title, desc, landlord, arbitrator, amount, token, tenantName, landlordName } = createFormData;
+    const { title, desc, tenant, arbitrator, amount, token, tenantName, landlordName } = createFormData;
     const contractAddress = DEFAULT_CONTRACT_ID;
 
     // SAC token address mappings
@@ -489,8 +489,8 @@ function App() {
       
       const args = [
         nativeToScVal(leaseId, { type: 'u64' }),
-        nativeToScVal(userAddress, { type: 'address' }), // tenant
-        nativeToScVal(landlord, { type: 'address' }),
+        nativeToScVal(tenant, { type: 'address' }), // tenant address from form
+        nativeToScVal(userAddress, { type: 'address' }), // landlord (connected userAddress)
         nativeToScVal(arbitrator, { type: 'address' }),
         nativeToScVal(tokenAddress, { type: 'address' }),
         nativeToScVal(BigInt(Math.floor(parseFloat(amount) * 10_000_000)), { type: 'i128' })
@@ -503,9 +503,9 @@ function App() {
       const newEscrow = {
         leaseId: leaseIdStr,
         address: contractAddress,
-        tenant: userAddress,
+        tenant, // tenant address from form
         tenantName: tenantName || 'Tenant',
-        landlord,
+        landlord: userAddress, // landlord (connected userAddress)
         landlordName: landlordName || 'Landlord',
         arbitrator,
         arbitratorName: 'Delhi Housing Authority',
@@ -537,7 +537,7 @@ function App() {
       setCreateFormData({
         title: '',
         desc: '',
-        landlord: '',
+        tenant: '',
         arbitrator: '',
         amount: '',
         token: 'native',
@@ -988,15 +988,15 @@ function App() {
 
                       <div className="form-grid form-grid-stack">
                         <div className="form-group">
-                          <label htmlFor="input-landlord">LANDLORD PUBLIC KEY</label>
+                          <label htmlFor="input-tenant">TENANT PUBLIC KEY</label>
                           <input 
                             type="text" 
-                            id="input-landlord" 
+                            id="input-tenant" 
                             className="address-mono" 
-                            placeholder="GB..." 
+                            placeholder="GD..." 
                             required
-                            value={createFormData.landlord}
-                            onChange={(e) => setCreateFormData({ ...createFormData, landlord: e.target.value })}
+                            value={createFormData.tenant}
+                            onChange={(e) => setCreateFormData({ ...createFormData, tenant: e.target.value })}
                           />
                         </div>
 
