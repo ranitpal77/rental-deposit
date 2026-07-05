@@ -64,7 +64,7 @@ By leveraging Stellar's protocol-level primitives and Soroban's smart contractin
 ![Transaction Screenshot](./assets/Successful-testnet-transaction-02.png)
 
 ### 📸 Deployed Smart Contract Screenshot
-![Deployed Contract](./assets/deployed-contract-02.png)
+![Deployed Contract](./assets/deployed-contract.png)
 
 ### 📸 UI Screenshot
 ![UI Screenshot](./assets/UI.png)
