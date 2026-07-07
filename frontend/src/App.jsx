@@ -22,7 +22,7 @@ if (typeof window !== 'undefined') {
 const RPC_URL = 'https://soroban-testnet.stellar.org:443';
 const NETWORK_PASSPHRASE = Networks.TESTNET;
 const BACKEND_URL = 'http://localhost:5000';
-const DEFAULT_CONTRACT_ID = 'CDZOCNE6CLCD5JFWTQ46JRYGFHGX6WQ7U7NTZ6NDCCSBYHXMRBWYUHZP';
+const DEFAULT_CONTRACT_ID = 'CBFMZXLLIW2JUUWOC4ZQEJWRQCIGJEY34SHCVUDVIZ7NFVONF3G63LO6';
 
 // Formatting & Privacy Helpers
 const formatXlmAmount = (val) => {
@@ -206,9 +206,9 @@ function App() {
   const [toasts, setToasts] = useState([]);
 
   // Toast Notification Helper
-  const showToast = useCallback((message, type = 'success') => {
+  const showToast = useCallback((message, type = 'success', txHash = null) => {
     const id = Date.now() + Math.random();
-    setToasts(prev => [...prev, { id, message, type }]);
+    setToasts(prev => [...prev, { id, message, type, txHash }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 4000);
@@ -313,10 +313,146 @@ function App() {
         console.warn('Failed to fetch escrows from API, fallback to local storage:', apiErr);
         allEscrows = getLocalEscrows();
       }
+
+      // Fetch on-chain events to populate missing transaction hashes
+      let eventTxMap = {}; // key: leaseId -> Array of events
+      try {
+        const latestLedger = await rpcServer.getLatestLedger();
+        const startLedger = Math.max(1, latestLedger.sequence - 10000);
+        const eventsResponse = await rpcServer.getEvents({
+          startLedger,
+          filters: [
+            {
+              type: 'contract',
+              id: DEFAULT_CONTRACT_ID
+            }
+          ]
+        });
+        
+        const rawEvents = eventsResponse.events || [];
+        rawEvents.forEach(evt => {
+          const actualTxHash = evt.txHash || evt.transactionHash;
+          if (!evt.topic || !actualTxHash) return;
+          const eventName = evt.topic[0] ? scValToNative(evt.topic[0]) : '';
+          if (!eventName) return;
+          
+          let matchedLeaseId = null;
+          try {
+            if (eventName === 'init') {
+              const spoileredId = scValToNative(evt.value);
+              const match = allEscrows.find(e => getSpoileredLeaseId(e.leaseId) === spoileredId);
+              if (match) matchedLeaseId = match.leaseId;
+            } else if (evt.topic[1]) {
+              const rawIdVal = scValToNative(evt.topic[1]);
+              const match = allEscrows.find(e => fnv1a64(e.leaseId).toString() === rawIdVal.toString());
+              if (match) matchedLeaseId = match.leaseId;
+            }
+          } catch (e) {}
+          
+          if (matchedLeaseId) {
+            if (!eventTxMap[matchedLeaseId]) {
+              eventTxMap[matchedLeaseId] = [];
+            }
+            
+            const matchedEscrow = allEscrows.find(e => e.leaseId === matchedLeaseId);
+            let callerRole = '';
+            if (eventName === 'init') {
+              callerRole = 'Landlord';
+            } else if (eventName === 'funded') {
+              callerRole = 'Tenant';
+            } else if (eventName === 'proposed' || eventName === 'disputed') {
+              try {
+                const callerAddr = scValToNative(evt.topic[2]);
+                if (matchedEscrow) {
+                  callerRole = (callerAddr === matchedEscrow.tenant) ? 'Tenant' : 'Landlord';
+                }
+              } catch (e) {}
+            } else if (eventName === 'released') {
+              try {
+                const typeSym = scValToNative(evt.topic[2]);
+                if (typeSym === 'dispute') {
+                  callerRole = 'Arbitrator';
+                }
+              } catch (e) {}
+            }
+            
+            eventTxMap[matchedLeaseId].push({
+              eventName,
+              txHash: actualTxHash,
+              timestamp: evt.ledgerClosedAt || new Date().toISOString(),
+              callerRole
+            });
+          }
+        });
+      } catch (evtErr) {
+        console.warn('Failed to fetch events from Soroban RPC:', evtErr);
+      }
       
-      const escrows = userAddress 
+      const escrows = (userAddress 
         ? allEscrows.filter(e => e.tenant === userAddress || e.landlord === userAddress || e.arbitrator === userAddress)
-        : [];
+        : []).map(escrow => {
+          const leaseEvents = eventTxMap[escrow.leaseId] || [];
+          // Sort chronologically
+          leaseEvents.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+          // Reconstruct mutual release caller role if empty
+          leaseEvents.forEach((le, idx) => {
+            if (le.eventName === 'released' && !le.callerRole) {
+              const firstProposer = leaseEvents.find(e => e.eventName === 'proposed');
+              if (firstProposer) {
+                le.callerRole = firstProposer.callerRole === 'Tenant' ? 'Landlord' : 'Tenant';
+              } else {
+                le.callerRole = 'Tenant'; // fallback
+              }
+            }
+          });
+ 
+          if (escrow.history) {
+            let consumedIndices = new Set();
+            const updatedHistory = escrow.history.map(hist => {
+              if (hist.txHash) return hist;
+              
+              let matchedHash = null;
+              let matchedRole = null;
+              const eventStr = hist.event.toLowerCase();
+              
+              for (let i = 0; i < leaseEvents.length; i++) {
+                if (consumedIndices.has(i)) continue;
+                
+                const le = leaseEvents[i];
+                const leName = le.eventName.toLowerCase();
+                let isMatch = false;
+                
+                if ((eventStr.includes('created') || eventStr.includes('initialized')) && leName === 'init') {
+                  isMatch = true;
+                } else if (eventStr.includes('funded') && leName === 'funded') {
+                  isMatch = true;
+                } else if (eventStr.includes('proposed') && leName === 'proposed') {
+                  isMatch = true;
+                } else if ((eventStr.includes('dispute declared') || eventStr.includes('disputed') || eventStr.includes('automatically transitioned to disputed') || eventStr.includes('splits conflict')) && leName === 'disputed') {
+                  isMatch = true;
+                } else if ((eventStr.includes('released') || eventStr.includes('dispute resolved')) && leName === 'released') {
+                  isMatch = true;
+                }
+                
+                if (isMatch) {
+                  matchedHash = le.txHash;
+                  matchedRole = le.callerRole;
+                  consumedIndices.add(i);
+                  break;
+                }
+              }
+              
+              return { 
+                ...hist, 
+                txHash: matchedHash || hist.txHash,
+                callerRole: matchedRole || hist.callerRole
+              };
+            });
+            return { ...escrow, history: updatedHistory };
+          }
+          return escrow;
+        });
       
       setDashboardEscrows(escrows);
 
@@ -441,7 +577,8 @@ function App() {
     }
 
     console.log('Transaction submitted. Hash:', submitResult.hash);
-    return await waitTx(submitResult.hash);
+    const txResult = await waitTx(submitResult.hash);
+    return { hash: submitResult.hash, ...txResult };
   };
 
   // Safe error parser
@@ -557,6 +694,113 @@ function App() {
         }
       }
 
+      // Fetch on-chain events for this lease if metadata is missing/incomplete
+      let leaseEvents = [];
+      try {
+        const latestLedger = await rpcServer.getLatestLedger();
+        const startLedger = Math.max(1, latestLedger.sequence - 10000);
+        const eventsResponse = await rpcServer.getEvents({
+          startLedger,
+          filters: [
+            {
+              type: 'contract',
+              id: contractId
+            }
+          ]
+        });
+        
+        const rawEvents = eventsResponse.events || [];
+        rawEvents.forEach(evt => {
+          const actualTxHash = evt.txHash || evt.transactionHash;
+          if (!evt.topic || !actualTxHash) return;
+          const eventName = evt.topic[0] ? scValToNative(evt.topic[0]) : '';
+          if (!eventName) return;
+          
+          let matches = false;
+          try {
+            if (eventName === 'init') {
+              const spoileredId = scValToNative(evt.value);
+              if (getSpoileredLeaseId(idStr) === spoileredId) matches = true;
+            } else if (evt.topic[1]) {
+              const rawIdVal = scValToNative(evt.topic[1]);
+              if (fnv1a64(idStr).toString() === rawIdVal.toString()) matches = true;
+            }
+          } catch (e) {}
+          
+          if (matches) {
+            let eventText = '';
+            let callerRole = '';
+            if (eventName === 'init') {
+              eventText = 'Escrow Created & Initialized';
+              callerRole = 'Landlord';
+            } else if (eventName === 'funded') {
+              eventText = 'Escrow Funded';
+              callerRole = 'Tenant';
+            } else if (eventName === 'proposed') {
+              try {
+                const val = scValToNative(evt.value);
+                const tAmt = formatXlmAmount(Number(val[0]) / 10_000_000);
+                const lAmt = formatXlmAmount(Number(val[1]) / 10_000_000);
+                const callerAddr = scValToNative(evt.topic[2]);
+                callerRole = (callerAddr === tenantAddr) ? 'Tenant' : 'Landlord';
+                eventText = `${callerRole} proposed release split: Tenant: ${tAmt} XLM, Landlord: ${lAmt} XLM`;
+              } catch (e) {
+                eventText = 'Release split proposal submitted';
+              }
+            } else if (eventName === 'disputed') {
+              try {
+                const reasonStr = scValToNative(evt.value);
+                const callerAddr = scValToNative(evt.topic[2]);
+                callerRole = (callerAddr === tenantAddr) ? 'Tenant' : 'Landlord';
+                eventText = `Dispute declared by ${callerRole}. Reason: "${reasonStr}"`;
+              } catch (e) {
+                eventText = 'Dispute declared';
+              }
+            } else if (eventName === 'released') {
+              try {
+                const val = scValToNative(evt.value);
+                const tAmt = formatXlmAmount(Number(val[0]) / 10_000_000);
+                const lAmt = formatXlmAmount(Number(val[1]) / 10_000_000);
+                const typeSym = scValToNative(evt.topic[2]);
+                if (typeSym === 'dispute') {
+                  eventText = `Dispute resolved by Arbitrator! (Tenant: ${tAmt} XLM, Landlord: ${lAmt} XLM)`;
+                  callerRole = 'Arbitrator';
+                } else {
+                  eventText = `Escrow Released! (Tenant: ${tAmt} XLM, Landlord: ${lAmt} XLM)`;
+                }
+              } catch (e) {
+                eventText = 'Escrow Released';
+              }
+            }
+            
+            if (eventText) {
+              leaseEvents.push({
+                timestamp: evt.ledgerClosedAt || new Date().toISOString(),
+                event: eventText,
+                txHash: actualTxHash,
+                callerRole
+              });
+            }
+          }
+        });
+        
+        leaseEvents.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+        // Reconstruct mutual release caller role if empty
+        leaseEvents.forEach((le, idx) => {
+          if (le.eventName === 'released' && !le.callerRole) {
+            const firstProposer = leaseEvents.find(e => e.eventName === 'proposed');
+            if (firstProposer) {
+              le.callerRole = firstProposer.callerRole === 'Tenant' ? 'Landlord' : 'Tenant';
+            } else {
+              le.callerRole = 'Tenant'; // fallback
+            }
+          }
+        });
+      } catch (evtErr) {
+        console.warn('Failed to fetch load events:', evtErr);
+      }
+
       const detailsObj = {
         leaseId: idStr,
         address: contractId,
@@ -573,10 +817,41 @@ function App() {
         tenantProposal,
         landlordProposal,
         disputeReason,
-        unlockTime
+        unlockTime,
+        history: (metadata && metadata.history && metadata.history.length > 0) 
+          ? metadata.history 
+          : leaseEvents.length > 0 
+            ? leaseEvents 
+            : [
+                { timestamp: new Date().toISOString(), event: 'Escrow Loaded from On-Chain' }
+              ]
       };
 
       setActiveEscrowDetails(detailsObj);
+
+      // Save/sync back to local storage and backend if needed
+      const escrows = getLocalEscrows();
+      const existingIdx = escrows.findIndex(e => e.leaseId === idStr);
+      if (existingIdx >= 0) {
+        escrows[existingIdx] = detailsObj;
+      } else {
+        escrows.push(detailsObj);
+      }
+      saveLocalEscrows(escrows);
+
+      // Sync back to backend API if not exists there
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/escrows/${idStr}`);
+        if (!response.ok) {
+          await fetch(`${BACKEND_URL}/api/escrows`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(detailsObj)
+          });
+        }
+      } catch (err) {
+        console.warn('Sync back to backend failed:', err);
+      }
 
       // Snap slider ranges to snapped proposals or default half
       const isCurrentUserTenant = userAddress === tenantAddr;
@@ -644,7 +919,8 @@ function App() {
         nativeToScVal(spoileredLeaseId, { type: 'string' })
       ];
 
-      await executeTx(contractAddress, 'initialize', args);
+      const txResult = await executeTx(contractAddress, 'initialize', args);
+      const txHash = txResult.hash;
 
       // Save to local storage
       const escrows = getLocalEscrows();
@@ -663,7 +939,7 @@ function App() {
         description: desc,
         unlockTime: 0,
         history: [
-          { timestamp: new Date().toISOString(), event: 'Escrow Created & Initialized' }
+          { timestamp: new Date().toISOString(), event: 'Escrow Created & Initialized', txHash, callerRole: 'Landlord' }
         ]
       };
       escrows.push(newEscrow);
@@ -680,7 +956,7 @@ function App() {
         console.warn('Backend sync failed:', err);
       }
 
-      showToast(`Escrow initialized successfully! Lease ID: ${leaseIdStr}`, 'success');
+      showToast(`Escrow initialized successfully! Lease ID: ${leaseIdStr}`, 'success', txHash);
       
       // Clear form
       setCreateFormData({
@@ -716,25 +992,30 @@ function App() {
     setIsFunding(true);
     try {
       const leaseId = fnv1a64(leaseIdStr);
-      await executeTx(activeEscrowDetails.address, 'fund', [nativeToScVal(leaseId, { type: 'u64' })]);
+      const txResult = await executeTx(activeEscrowDetails.address, 'fund', [nativeToScVal(leaseId, { type: 'u64' })]);
+      const txHash = txResult.hash;
 
       // Update offline DB
       const escrows = getLocalEscrows();
       const escrow = escrows.find(e => e.leaseId === leaseIdStr);
       if (escrow) {
         escrow.status = 'Active';
-        escrow.history.push({ timestamp: new Date().toISOString(), event: 'Escrow Funded' });
+        escrow.history.push({ timestamp: new Date().toISOString(), event: 'Escrow Funded', txHash, callerRole: 'Tenant' });
         saveLocalEscrows(escrows);
       }
 
       // Notify backend falling back silently
       try {
-        await fetch(`${BACKEND_URL}/api/escrows/${leaseIdStr}/fund`, { method: 'POST' });
+        await fetch(`${BACKEND_URL}/api/escrows/${leaseIdStr}/fund`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ txHash })
+        });
       } catch (err) {
         console.warn('Backend sync failed:', err);
       }
 
-      showToast('Escrow funded successfully on-chain! Funds locked in contract.', 'success');
+      showToast('Escrow funded successfully on-chain! Funds locked in contract.', 'success', txHash);
       handleLoadEscrow(leaseIdStr);
       loadDashboardEscrows();
       updateWalletBalance(userAddress);
@@ -765,7 +1046,8 @@ function App() {
         nativeToScVal(BigInt(Math.floor(landlordAmt * 10_000_000)), { type: 'i128' })
       ];
 
-      await executeTx(activeEscrowDetails.address, 'propose_release', args);
+      const txResult = await executeTx(activeEscrowDetails.address, 'propose_release', args);
+      const txHash = txResult.hash;
 
       // Check on-chain status to see if splits match
       const currentStatus = await simulateCall(activeEscrowDetails.address, 'get_status', [leaseIdVal]);
@@ -773,19 +1055,22 @@ function App() {
       const escrows = getLocalEscrows();
       const escrow = escrows.find(e => e.leaseId === leaseIdStr);
       if (escrow) {
+        const callerRole = userAddress === escrow.tenant ? 'Tenant' : 'Landlord';
         if (Number(currentStatus) === 3) {
           escrow.status = 'Released';
           escrow.history.push({ 
             timestamp: new Date().toISOString(), 
-            event: `Escrow Released! (Tenant: ${tenantAmt} XLM, Landlord: ${landlordAmt} XLM)` 
+            event: `Escrow Released! (Tenant: ${tenantAmt} XLM, Landlord: ${landlordAmt} XLM)`,
+            txHash,
+            callerRole
           });
-          showToast('Agreement reached! Splits match. Escrow released successfully!', 'success');
+          showToast('Agreement reached! Splits match. Escrow released successfully!', 'success', txHash);
 
           try {
             await fetch(`${BACKEND_URL}/api/escrows/${leaseIdStr}/release`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ tenantAmount: tenantAmt, landlordAmount: landlordAmt })
+              body: JSON.stringify({ tenantAmount: tenantAmt, landlordAmount: landlordAmt, txHash, callerRole })
             });
           } catch (err) {
             console.warn('Backend sync failed:', err);
@@ -794,32 +1079,35 @@ function App() {
           escrow.status = 'Disputed';
           escrow.history.push({ 
             timestamp: new Date().toISOString(), 
-            event: `Conflicting proposal submitted! Escrow automatically transitioned to Disputed.` 
+            event: `Conflicting proposal submitted! Escrow automatically transitioned to Disputed.`,
+            txHash,
+            callerRole
           });
-          showToast('Proposals conflict! Escrow automatically transitioned to Disputed state.', 'warning');
+          showToast('Conflicting proposal submitted. Escrow status transitioned to DISPUTED.', 'warning', txHash);
 
           try {
             await fetch(`${BACKEND_URL}/api/escrows/${leaseIdStr}/dispute`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ caller: userAddress, reason: 'Automated dispute: landlord and tenant split proposals conflict' })
+              body: JSON.stringify({ caller: userAddress, reason: 'Conflicting release splits proposed', txHash })
             });
           } catch (err) {
             console.warn('Backend sync failed:', err);
           }
         } else {
-          const callerRole = userAddress === escrow.tenant ? 'Tenant' : 'Landlord';
           escrow.history.push({ 
             timestamp: new Date().toISOString(), 
-            event: `${callerRole} proposed release split: Tenant: ${tenantAmt} XLM, Landlord: ${landlordAmt} XLM` 
+            event: `${callerRole} proposed release split: Tenant: ${tenantAmt} XLM, Landlord: ${landlordAmt} XLM`,
+            txHash,
+            callerRole
           });
-          showToast(`Split proposal submitted! Waiting for matching proposal from the other party.`, 'info');
+          showToast('Settlement proposal submitted successfully.', 'success', txHash);
 
           try {
             await fetch(`${BACKEND_URL}/api/escrows/${leaseIdStr}/propose`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ caller: userAddress, tenantAmount: tenantAmt, landlordAmount: landlordAmt })
+              body: JSON.stringify({ caller: userAddress, tenantAmount: tenantAmt, landlordAmount: landlordAmt, txHash })
             });
           } catch (err) {
             console.warn('Backend sync failed:', err);
@@ -854,7 +1142,8 @@ function App() {
         nativeToScVal(reason, { type: 'string' })
       ];
 
-      await executeTx(activeEscrowDetails.address, 'dispute', args);
+      const txResult = await executeTx(activeEscrowDetails.address, 'dispute', args);
+      const txHash = txResult.hash;
 
       const escrows = getLocalEscrows();
       const escrow = escrows.find(e => e.leaseId === leaseIdStr);
@@ -863,7 +1152,9 @@ function App() {
         escrow.status = 'Disputed';
         escrow.history.push({ 
           timestamp: new Date().toISOString(), 
-          event: `Dispute declared by ${callerRole}. Reason: "${reason}"` 
+          event: `Dispute declared by ${callerRole}. Reason: "${reason}"`,
+          txHash,
+          callerRole
         });
         saveLocalEscrows(escrows);
       }
@@ -872,13 +1163,13 @@ function App() {
         await fetch(`${BACKEND_URL}/api/escrows/${leaseIdStr}/dispute`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ caller: userAddress, reason })
+          body: JSON.stringify({ caller: userAddress, reason, txHash })
         });
       } catch (err) {
         console.warn('Backend sync failed:', err);
       }
 
-      showToast('Dispute successfully declared on-chain. Arbitrator has been notified.', 'success');
+      showToast('Dispute successfully declared on-chain. Arbitrator has been notified.', 'success', txHash);
       setDisputeReasonInput('');
       handleLoadEscrow(leaseIdStr);
       loadDashboardEscrows();
@@ -906,7 +1197,8 @@ function App() {
         nativeToScVal(BigInt(Math.floor(landlordAmt * 10_000_000)), { type: 'i128' })
       ];
 
-      await executeTx(activeEscrowDetails.address, 'resolve_dispute', args);
+      const txResult = await executeTx(activeEscrowDetails.address, 'resolve_dispute', args);
+      const txHash = txResult.hash;
 
       const escrows = getLocalEscrows();
       const escrow = escrows.find(e => e.leaseId === leaseIdStr);
@@ -914,7 +1206,9 @@ function App() {
         escrow.status = 'Released (Disputed)';
         escrow.history.push({ 
           timestamp: new Date().toISOString(), 
-          event: `Dispute resolved by Arbitrator! (Tenant: ${tenantAmt} XLM, Landlord: ${landlordAmt} XLM)` 
+          event: `Dispute resolved by Arbitrator! (Tenant: ${tenantAmt} XLM, Landlord: ${landlordAmt} XLM)`,
+          txHash,
+          callerRole: 'Arbitrator'
         });
         saveLocalEscrows(escrows);
       }
@@ -923,13 +1217,13 @@ function App() {
         await fetch(`${BACKEND_URL}/api/escrows/${leaseIdStr}/resolve`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tenantAmount: tenantAmt, landlordAmount: landlordAmt })
+          body: JSON.stringify({ tenantAmount: tenantAmt, landlordAmount: landlordAmt, txHash })
         });
       } catch (err) {
         console.warn('Backend sync failed:', err);
       }
 
-      showToast('Dispute resolved by arbitrator. Funds distributed!', 'success');
+      showToast('Dispute resolved by arbitrator. Funds distributed!', 'success', txHash);
       handleLoadEscrow(leaseIdStr);
       loadDashboardEscrows();
       updateWalletBalance(userAddress);
@@ -1737,14 +2031,18 @@ function App() {
               <div className="bento-card bento-card-dashboard" style={{ gridColumn: 'span 2', gridRow: 'span 3' }}>
                 <h2 className="section-title">ACTIVE AGENTS / PLATFORM DASHBOARD</h2>
                 <p className="section-desc">Current escrows tracked by the platform backend coordinator.</p>
-
+ 
                 <div className="escrow-list">
                   {!userAddress ? (
                     <div className="dashboard-placeholder">Please connect your wallet to view your active escrows.</div>
-                  ) : dashboardEscrows.length === 0 ? (
-                    <div className="dashboard-placeholder">No active escrows registered for this wallet.</div>
-                  ) : (
-                    dashboardEscrows.map(escrow => (
+                  ) : (() => {
+                    const activeEscrows = dashboardEscrows.filter(e => e.status.toLowerCase() !== 'released' && e.status.toLowerCase() !== 'released (disputed)' && e.status.toLowerCase() !== 'resolved');
+                    
+                    if (activeEscrows.length === 0) {
+                      return <div className="dashboard-placeholder">No active escrows registered for this wallet.</div>;
+                    }
+                    
+                    return activeEscrows.map(escrow => (
                       <div 
                         key={escrow.leaseId} 
                         className="escrow-row" 
@@ -1767,8 +2065,167 @@ function App() {
                           <span className={`badge-status ${getStatusBadgeClass(escrow.status)}`}>{escrow.status.toUpperCase()}</span>
                         </div>
                       </div>
-                    ))
-                  )}
+                    ));
+                  })()}
+                </div>
+              </div>
+
+              {/* Resolved Settlements Dashboard */}
+              <div className="bento-card bento-card-resolved" style={{ gridColumn: 'span 3', gridRow: 'span 3', marginTop: '1.5rem' }}>
+                <h2 className="section-title">RESOLVED SETTLEMENTS & DEPOSIT PAYOUTS</h2>
+                <p className="section-desc">Historical timeline and final on-chain payout distributions.</p>
+                <div className="escrow-list">
+                  {!userAddress ? (
+                    <div className="dashboard-placeholder">Please connect your wallet to view historical resolutions.</div>
+                  ) : (() => {
+                    const resolvedEscrows = dashboardEscrows.filter(e => {
+                      const statusLower = String(e.status).toLowerCase();
+                      const isResolved = statusLower === 'released' || statusLower === 'released (disputed)' || statusLower === 'resolved';
+                      if (!isResolved) return false;
+
+                      // Filter based on connected wallet role
+                      if (e.tenant === userAddress) {
+                        return true;
+                      }
+                      if (e.landlord === userAddress) {
+                        return true;
+                      }
+                      if (e.arbitrator === userAddress) {
+                        // Arbitrator only sees disputes they were assigned to resolve
+                        const isDisputed = statusLower.includes('disput') || statusLower === 'resolved';
+                        const hasDisputeEvent = e.history && e.history.some(h => 
+                          String(h.event).toLowerCase().includes('dispute')
+                        );
+                        return isDisputed || hasDisputeEvent;
+                      }
+                      return false;
+                    });
+                    
+                    if (resolvedEscrows.length === 0) {
+                      return <div className="dashboard-placeholder">No resolved escrows registered for this wallet.</div>;
+                    }
+                    
+                    return resolvedEscrows.map(escrow => (
+                      <div 
+                        key={escrow.leaseId} 
+                        className="escrow-row resolved-escrow-row" 
+                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '0.75rem', cursor: 'default', height: 'auto', padding: '1.25rem' }}
+                      >
+                        {/* Title & Status Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                            <span className="escrow-row-title" style={{ fontSize: '0.95rem' }}>{escrow.title}</span>
+                            <span className="escrow-row-address address-mono">{`Lease ID: ${getSpoileredLeaseId(escrow.leaseId)}`}</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <span className="escrow-row-amount address-mono" style={{ fontSize: '1rem', fontWeight: 700 }}>{escrow.amount}</span>
+                            <span className={`badge-status ${getStatusBadgeClass(escrow.status)}`}>
+                              {escrow.status.toUpperCase()}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Participants context */}
+                        <div style={{ display: 'flex', gap: '1rem', fontSize: '0.75rem', color: 'var(--text-secondary)', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem' }}>
+                          <span>Tenant: <strong style={{ color: 'var(--text-primary)' }}>{escrow.tenantName}</strong></span>
+                          <span>Landlord: <strong style={{ color: 'var(--text-primary)' }}>{escrow.landlordName}</strong></span>
+                        </div>
+
+                        {/* Timeline */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', textAlign: 'left', marginTop: '0.25rem' }}>
+                          <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--color-primary)', letterSpacing: '0.05em', fontWeight: 700 }}>
+                            ON-CHAIN INVOCATIONS TIMELINE & VERIFICATION
+                          </span>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', paddingLeft: '0.5rem', borderLeft: '2px solid rgba(255,255,255,0.05)' }}>
+                            {escrow.history && escrow.history.map((event, idx) => {
+                              let roleLabel = '';
+                              let roleClass = '';
+                              
+                              if (event.callerRole) {
+                                if (event.callerRole === 'Tenant') {
+                                  roleLabel = 'Tenant Invocation';
+                                  roleClass = 'role-tenant';
+                                } else if (event.callerRole === 'Landlord') {
+                                  roleLabel = 'Landlord Invocation';
+                                  roleClass = 'role-landlord';
+                                } else if (event.callerRole === 'Arbitrator') {
+                                  roleLabel = 'Arbitrator Invocation';
+                                  roleClass = 'role-arbitrator';
+                                }
+                              } else {
+                                // Fallback substring parsing for legacy/historic timeline entries
+                                const eventStr = event.event.toLowerCase();
+                                const isCreated = eventStr.includes('created') || eventStr.includes('initialized');
+                                const isFunded = eventStr.includes('funded');
+                                const isTenantProposed = eventStr.startsWith('tenant proposed');
+                                const isLandlordProposed = eventStr.startsWith('landlord proposed');
+                                const isDisputeDeclaredByTenant = eventStr.includes('dispute declared by tenant');
+                                const isDisputeDeclaredByLandlord = eventStr.includes('dispute declared by landlord');
+                                const isArbitratorResolve = eventStr.includes('dispute resolved') || eventStr.includes('arbitrator');
+                                
+                                if (isCreated || isLandlordProposed || isDisputeDeclaredByLandlord) {
+                                  roleLabel = 'Landlord Invocation';
+                                  roleClass = 'role-landlord';
+                                } else if (isFunded || isTenantProposed || isDisputeDeclaredByTenant) {
+                                  roleLabel = 'Tenant Invocation';
+                                  roleClass = 'role-tenant';
+                                } else if (isArbitratorResolve) {
+                                  roleLabel = 'Arbitrator Invocation';
+                                  roleClass = 'role-arbitrator';
+                                } else if (eventStr.includes('released')) {
+                                  const tenantProposedFirst = escrow.history.some(h => h.event.toLowerCase().startsWith('tenant proposed'));
+                                  if (tenantProposedFirst) {
+                                    roleLabel = 'Landlord Invocation';
+                                    roleClass = 'role-landlord';
+                                  } else {
+                                    roleLabel = 'Tenant Invocation';
+                                    roleClass = 'role-tenant';
+                                  }
+                                }
+                              }
+
+                              return (
+                                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', gap: '1rem', padding: '0.25rem 0' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                                    <span style={{ color: 'var(--text-primary)' }}>{event.event}</span>
+                                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(event.timestamp).toLocaleString()}</span>
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                                    {roleLabel && (
+                                      <span className={`role-badge ${roleClass}`} style={{ fontSize: '0.6rem', padding: '0.1rem 0.35rem', borderRadius: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', letterSpacing: '0.02em' }}>
+                                        {roleLabel}
+                                      </span>
+                                    )}
+                                    {event.txHash ? (
+                                      <a 
+                                        href={`https://stellar.expert/explorer/testnet/tx/${event.txHash}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn btn-secondary"
+                                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.65rem', fontFamily: 'var(--font-mono)', borderRadius: '4px', textDecoration: 'none' }}
+                                      >
+                                        Verify Tx &rarr;
+                                      </a>
+                                    ) : (
+                                      <a 
+                                        href={`https://stellar.expert/explorer/testnet/contract/${escrow.address || DEFAULT_CONTRACT_ID}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn btn-secondary"
+                                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.65rem', fontFamily: 'var(--font-mono)', borderRadius: '4px', textDecoration: 'none', opacity: 0.8 }}
+                                      >
+                                        Verify Contract &rarr;
+                                      </a>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    ));
+                  })()}
                 </div>
               </div>
 
@@ -1912,11 +2369,7 @@ function App() {
               </svg>
               VIEW SHARED CONTRACT
             </a>
-            {activeEscrowDetails && (
-              <div style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginTop: '0.25rem', textAlign: 'center' }}>
-                Explorer Verification &rarr; Tenant: <strong>{activeEscrowDetails.tenantName}</strong> | Landlord: <strong>{activeEscrowDetails.landlordName}</strong> | Lease: <strong>{getSpoileredLeaseId(activeEscrowDetails.leaseId)}</strong>
-              </div>
-            )}
+
           </div>
           <div className="status-indicator">
             <span className="status-dot green"></span>
@@ -1951,7 +2404,19 @@ function App() {
                 </svg>
               )}
             </span>
-            <span className="toast-message">{toast.message}</span>
+            <span className="toast-message" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <span>{toast.message}</span>
+              {toast.txHash && (
+                <a 
+                  href={`https://stellar.expert/explorer/testnet/tx/${toast.txHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: 'var(--color-primary)', textDecoration: 'underline', fontSize: '0.72rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', marginTop: '0.15rem' }}
+                >
+                  Verify Transaction &rarr;
+                </a>
+              )}
+            </span>
           </div>
         ))}
       </div>

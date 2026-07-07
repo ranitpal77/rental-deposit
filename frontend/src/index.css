@@ -1743,3 +1743,23 @@ body.light-theme .toast.info {
     max-width: 100%;
   }
 }
+
+/* Role Invocation Badges styling */
+.role-badge {
+  font-weight: 700;
+}
+.role-badge.role-tenant {
+  background: rgba(0, 229, 255, 0.1) !important;
+  color: #00e5ff !important;
+  border: 1px solid rgba(0, 229, 255, 0.2) !important;
+}
+.role-badge.role-landlord {
+  background: rgba(255, 179, 0, 0.1) !important;
+  color: #ffb300 !important;
+  border: 1px solid rgba(255, 179, 0, 0.2) !important;
+}
+.role-badge.role-arbitrator {
+  background: rgba(255, 23, 68, 0.1) !important;
+  color: #ff1744 !important;
+  border: 1px solid rgba(255, 23, 68, 0.2) !important;
+}

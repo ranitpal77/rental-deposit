@@ -28,3 +28,5 @@ target/
 .stellar/
 **/node_modules/
 
+# Local databases/state
+backend/escrows.json
