@@ -108,11 +108,7 @@ fn test_mutual_release_perfect_agreement() {
     assert_eq!(client.get_status(&1u64), 1); // Still Active
     assert_eq!(client.get_proposal(&1u64, &tenant), Some((400, 100)));
 
-    // Landlord proposes different split: 300 to tenant, 200 to landlord
-    client.propose_release(&1u64, &landlord, &300, &200);
-    assert_eq!(client.get_status(&1u64), 1); // Still Active because splits do not match
-
-    // Landlord changes proposal to match tenant
+    // Landlord proposes matching split: 400 to tenant, 100 to landlord
     client.propose_release(&1u64, &landlord, &400, &100);
 
     // The release should be executed
@@ -120,6 +116,26 @@ fn test_mutual_release_perfect_agreement() {
     assert_eq!(token_client.balance(&tenant), 500 + 400); // 500 remaining + 400 released
     assert_eq!(token_client.balance(&landlord), 100); // 0 initial + 100 released
     assert_eq!(token_client.balance(&client.address), 0);
+}
+
+#[test]
+fn test_mutual_release_conflicting_proposals_auto_disputes() {
+    let env = Env::default();
+    let (client, tenant, landlord, arbitrator, token_address, _token_client) = setup_test(&env);
+
+    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &500, &0u64);
+    client.fund(&1u64);
+
+    // Tenant proposes split: 400 to tenant, 100 to landlord
+    client.propose_release(&1u64, &tenant, &400, &100);
+    assert_eq!(client.get_status(&1u64), 1); // Still Active
+
+    // Landlord proposes conflicting split: 300 to tenant, 200 to landlord
+    client.propose_release(&1u64, &landlord, &300, &200);
+
+    // Escrow must transition to Disputed (2) automatically
+    assert_eq!(client.get_status(&1u64), 2); // Disputed
+    assert_eq!(client.get_dispute_reason(&1u64), soroban_sdk::String::from_str(&env, "Automated dispute: landlord and tenant split proposals conflict"));
 }
 
 #[test]
@@ -182,4 +198,40 @@ fn test_multiple_leases_are_isolated() {
     assert_eq!(client.get_amount(&2u64), 300);
     assert_eq!(client.is_funded(&1u64), false);
     assert_eq!(client.is_funded(&2u64), false);
+}
+
+#[test]
+fn test_lock_period_starts_only_after_tenant_proposal() {
+    let env = Env::default();
+    let (client, tenant, landlord, arbitrator, token_address, _token_client) = setup_test(&env);
+
+    // Initialize with a 100-second lock duration
+    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &500, &100u64);
+    client.fund(&1u64);
+
+    // Lock has not started yet (unlock time is 0)
+    assert_eq!(client.get_unlock_time(&1u64), 0);
+
+    // Tenant proposes split: 400 to tenant, 100 to landlord
+    client.propose_release(&1u64, &tenant, &400, &100);
+
+    // Now, the unlock time should be block time (default 0) + 100 seconds
+    assert_eq!(client.get_unlock_time(&1u64), 100);
+}
+
+#[test]
+#[should_panic(expected = "Escrow funds are locked until the unlock time")]
+fn test_landlord_cannot_propose_during_lock_duration() {
+    let env = Env::default();
+    let (client, tenant, landlord, arbitrator, token_address, _token_client) = setup_test(&env);
+
+    // Initialize with a 100-second lock duration
+    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &500, &100u64);
+    client.fund(&1u64);
+
+    // Tenant proposes split: starts the lock
+    client.propose_release(&1u64, &tenant, &400, &100);
+
+    // Landlord tries to propose split within the 100 seconds duration -> should panic
+    client.propose_release(&1u64, &landlord, &400, &100);
 }

@@ -16,6 +16,7 @@ pub enum DataKey {
     DisputeReason(u64),
     Proposal(u64, Address),
     UnlockTime(u64),
+    LockDuration(u64),
 }
 
 #[contract]
@@ -31,7 +32,7 @@ impl EscrowContract {
         arbitrator: Address,
         token: Address,
         amount: i128,
-        unlock_time: u64,
+        lock_duration: u64,
     ) {
         landlord.require_auth();
 
@@ -49,8 +50,9 @@ impl EscrowContract {
         env.storage().persistent().set(&DataKey::Token(lease_id), &token);
         env.storage().persistent().set(&DataKey::Amount(lease_id), &amount);
         env.storage().persistent().set(&DataKey::IsFunded(lease_id), &false);
-        env.storage().persistent().set(&DataKey::Status(lease_id), &0u32); // Created
-        env.storage().persistent().set(&DataKey::UnlockTime(lease_id), &unlock_time);
+        env.storage().persistent().set(&DataKey::Status(lease_id), &0u32);
+        env.storage().persistent().set(&DataKey::LockDuration(lease_id), &lock_duration);
+        env.storage().persistent().set(&DataKey::UnlockTime(lease_id), &0u64);
     }
 
     pub fn fund(env: Env, lease_id: u64) {
@@ -82,7 +84,7 @@ impl EscrowContract {
         caller.require_auth();
 
         let unlock_time: u64 = env.storage().persistent().get(&DataKey::UnlockTime(lease_id)).unwrap_or(0);
-        if env.ledger().timestamp() < unlock_time {
+        if unlock_time > 0 && env.ledger().timestamp() < unlock_time {
             panic!("Escrow funds are locked until the unlock time");
         }
 
@@ -102,6 +104,9 @@ impl EscrowContract {
         if status == 3 {
             panic!("Escrow already released");
         }
+        if status == 2 {
+            panic!("Escrow is in disputed state");
+        }
 
         let amount: i128 = env.storage().persistent().get(&DataKey::Amount(lease_id)).unwrap();
         if tenant_amount < 0 || landlord_amount < 0 {
@@ -119,6 +124,21 @@ impl EscrowContract {
             (symbol_short!("proposed"), lease_id, caller.clone()),
             (tenant_amount, landlord_amount),
         );
+
+        if caller == tenant {
+            let existing_unlock_time: u64 = env.storage().persistent().get(&DataKey::UnlockTime(lease_id)).unwrap_or(0);
+            if existing_unlock_time == 0 {
+                let lock_duration: u64 = env.storage().persistent().get(&DataKey::LockDuration(lease_id)).unwrap_or(0);
+                let calculated_unlock_time = env.ledger().timestamp() + lock_duration;
+                env.storage().persistent().set(&DataKey::UnlockTime(lease_id), &calculated_unlock_time);
+
+                // Emit lock started event
+                env.events().publish(
+                    (symbol_short!("locked"), lease_id),
+                    calculated_unlock_time,
+                );
+            }
+        }
 
         // Check if other party has proposed and splits match
         let other_party = if caller == tenant { landlord.clone() } else { tenant.clone() };
@@ -141,6 +161,18 @@ impl EscrowContract {
                 env.events().publish(
                     (symbol_short!("released"), lease_id, symbol_short!("mutual")),
                     (tenant_amount, landlord_amount),
+                );
+            } else {
+                // Automated dispute on conflicting proposals
+                env.storage().persistent().set(&DataKey::Status(lease_id), &2u32); // Disputed
+                
+                let reason = String::from_str(&env, "Automated dispute: landlord and tenant split proposals conflict");
+                env.storage().persistent().set(&DataKey::DisputeReason(lease_id), &reason);
+
+                // Emit dispute event
+                env.events().publish(
+                    (symbol_short!("disputed"), lease_id, caller.clone()),
+                    reason,
                 );
             }
         }
@@ -180,7 +212,7 @@ impl EscrowContract {
         arbitrator.require_auth();
 
         let unlock_time: u64 = env.storage().persistent().get(&DataKey::UnlockTime(lease_id)).unwrap_or(0);
-        if env.ledger().timestamp() < unlock_time {
+        if unlock_time > 0 && env.ledger().timestamp() < unlock_time {
             panic!("Escrow funds are locked until the unlock time");
         }
 
