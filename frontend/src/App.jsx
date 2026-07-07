@@ -1512,7 +1512,51 @@ function App() {
                             {userAddress === activeEscrowDetails.arbitrator ? (
                               <div>
                                 <h4 className="action-heading">ARBITRATOR TIE-BREAKER DECISION</h4>
-                                <p className="action-desc">You are the registered arbitrator. Decide final distribution split.</p>
+                                <p className="action-desc">You are the registered arbitrator. Review the dispute between Tenant <strong>{activeEscrowDetails.tenantName}</strong> and Landlord <strong>{activeEscrowDetails.landlordName}</strong>, compare the proposals, and decide the final distribution split.</p>
+
+                                {/* Side-by-Side Proposals Comparison */}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1.25rem', marginBottom: '1.5rem' }}>
+                                  <div style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.01)', textAlign: 'left' }}>
+                                    <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--color-primary)', letterSpacing: '0.05em', fontWeight: 700, display: 'block', marginBottom: '0.5rem' }}>
+                                      TENANT SETTLEMENT PROPOSAL
+                                    </span>
+                                    {activeEscrowDetails.tenantProposal ? (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                          <span style={{ color: 'var(--text-secondary)' }}>To Tenant:</span>
+                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{Number(activeEscrowDetails.tenantProposal[0]).toFixed(7)} XLM</strong>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                          <span style={{ color: 'var(--text-secondary)' }}>To Landlord:</span>
+                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{Number(activeEscrowDetails.tenantProposal[1]).toFixed(7)} XLM</strong>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No proposal submitted</span>
+                                    )}
+                                  </div>
+
+                                  <div style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.01)', textAlign: 'left' }}>
+                                    <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--color-primary)', letterSpacing: '0.05em', fontWeight: 700, display: 'block', marginBottom: '0.5rem' }}>
+                                      LANDLORD SETTLEMENT PROPOSAL
+                                    </span>
+                                    {activeEscrowDetails.landlordProposal ? (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                          <span style={{ color: 'var(--text-secondary)' }}>To Tenant:</span>
+                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{Number(activeEscrowDetails.landlordProposal[0]).toFixed(7)} XLM</strong>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                          <span style={{ color: 'var(--text-secondary)' }}>To Landlord:</span>
+                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{Number(activeEscrowDetails.landlordProposal[1]).toFixed(7)} XLM</strong>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No proposal submitted</span>
+                                    )}
+                                  </div>
+                                </div>
+
                                 <div className="slider-container">
                                   <div className="slider-labels">
                                     <span>TO TENANT: <strong className="address-mono">{`${Number(rangeArbVal).toFixed(7)} XLM`}</strong></span>
@@ -1555,8 +1599,54 @@ function App() {
                                 </button>
                               </div>
                             ) : (
-                              <div className="non-arbitrator-msg">
-                                Waiting for Delhi Housing Authority (Arbitrator) to review evidence and submit split.
+                              <div className="non-arbitrator-msg" style={{ width: '100%' }}>
+                                <h4 style={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-primary)', marginBottom: '0.75rem', textAlign: 'left' }}>
+                                  COMPARE CONFLICTING PROPOSALS
+                                </h4>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '0.25rem', marginBottom: '1.25rem', width: '100%' }}>
+                                  <div style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.01)', textAlign: 'left' }}>
+                                    <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--color-primary)', letterSpacing: '0.05em', fontWeight: 700, display: 'block', marginBottom: '0.5rem' }}>
+                                      TENANT SETTLEMENT PROPOSAL
+                                    </span>
+                                    {activeEscrowDetails.tenantProposal ? (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                          <span style={{ color: 'var(--text-secondary)' }}>To Tenant:</span>
+                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{Number(activeEscrowDetails.tenantProposal[0]).toFixed(7)} XLM</strong>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                          <span style={{ color: 'var(--text-secondary)' }}>To Landlord:</span>
+                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{Number(activeEscrowDetails.tenantProposal[1]).toFixed(7)} XLM</strong>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No proposal submitted</span>
+                                    )}
+                                  </div>
+
+                                  <div style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.01)', textAlign: 'left' }}>
+                                    <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--color-primary)', letterSpacing: '0.05em', fontWeight: 700, display: 'block', marginBottom: '0.5rem' }}>
+                                      LANDLORD SETTLEMENT PROPOSAL
+                                    </span>
+                                    {activeEscrowDetails.landlordProposal ? (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                          <span style={{ color: 'var(--text-secondary)' }}>To Tenant:</span>
+                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{Number(activeEscrowDetails.landlordProposal[0]).toFixed(7)} XLM</strong>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                          <span style={{ color: 'var(--text-secondary)' }}>To Landlord:</span>
+                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{Number(activeEscrowDetails.landlordProposal[1]).toFixed(7)} XLM</strong>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No proposal submitted</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', textAlign: 'center', background: 'rgba(255,255,255,0.02)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                                  Waiting for the Arbitrator to review the evidence and submit a decision.
+                                </div>
                               </div>
                             )}
                           </div>
@@ -1642,6 +1732,9 @@ function App() {
                       >
                         <div className="escrow-row-meta">
                           <span className="escrow-row-title">{escrow.title}</span>
+                          <span className="escrow-row-address address-mono text-truncate" style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                            Tenant: <strong>{escrow.tenantName || 'Tenant'}</strong> | Landlord: <strong>{escrow.landlordName || 'Landlord'}</strong>
+                          </span>
                           <span className="escrow-row-address address-mono text-truncate">{`Lease ID: ${escrow.leaseId}`}</span>
                         </div>
                         <div className="escrow-row-stats">
