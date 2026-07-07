@@ -273,9 +273,20 @@ function App() {
   }, [updateWalletBalance]);
 
   // Load Dashboard Data
-  const loadDashboardEscrows = useCallback(() => {
+  const loadDashboardEscrows = useCallback(async () => {
     try {
-      const allEscrows = getLocalEscrows();
+      let allEscrows = [];
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/escrows`);
+        if (response.ok) {
+          allEscrows = await response.json();
+        } else {
+          allEscrows = getLocalEscrows();
+        }
+      } catch (apiErr) {
+        console.warn('Failed to fetch escrows from API, fallback to local storage:', apiErr);
+        allEscrows = getLocalEscrows();
+      }
       
       const escrows = userAddress 
         ? allEscrows.filter(e => e.tenant === userAddress || e.landlord === userAddress || e.arbitrator === userAddress)
@@ -432,9 +443,24 @@ function App() {
       const leaseId = BigInt(idStr);
       const leaseIdVal = nativeToScVal(leaseId, { type: 'u64' });
 
-      // Fetch offline metadata from localStorage
-      const escrows = getLocalEscrows();
-      let metadata = escrows.find(e => e.leaseId === idStr);
+      // Try to fetch from backend API first
+      let metadata = null;
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/escrows/${idStr}`);
+        if (response.ok) {
+          metadata = await response.json();
+        }
+      } catch (err) {
+        console.warn('Failed to fetch escrow metadata from backend:', err);
+      }
+
+      // If backend call failed or not found, fall back to local storage
+      if (!metadata) {
+        const escrows = getLocalEscrows();
+        metadata = escrows.find(e => e.leaseId === idStr);
+      }
+
+      // If still not found, use defaults
       if (!metadata) {
         metadata = {
           tenantName: 'Tenant',
@@ -1338,20 +1364,36 @@ function App() {
                         </div>
 
                         {/* Actions: Unfunded state */}
-                        {activeEscrowDetails.status === 0 && (
-                          <div className="action-section">
-                            <div className="info-banner warning">
-                              <span>Escrow initialized but funds are not deposited yet.</span>
-                            </div>
-                            <button 
-                              onClick={handleFundEscrow} 
-                              disabled={isFunding} 
-                              className="btn btn-primary btn-full pill-btn"
-                            >
-                              {isFunding ? 'FUNDING ESCROW ON-CHAIN...' : 'FUND ESCROW NOW (DEPOSIT)'}
-                            </button>
-                          </div>
-                        )}
+                        {activeEscrowDetails.status === 0 && (() => {
+                          const isCurrentUserTenant = userAddress === activeEscrowDetails.tenant;
+                          if (isCurrentUserTenant) {
+                            return (
+                              <div className="action-section">
+                                <div className="info-banner warning" style={{ marginBottom: '1.25rem' }}>
+                                  <span>Escrow initialized. Please deposit the security deposit to activate the contract.</span>
+                                </div>
+                                <button 
+                                  onClick={handleFundEscrow} 
+                                  disabled={isFunding} 
+                                  className="btn btn-primary btn-full pill-btn"
+                                >
+                                  {isFunding ? 'FUNDING ESCROW ON-CHAIN...' : 'FUND ESCROW NOW (DEPOSIT)'}
+                                </button>
+                              </div>
+                            );
+                          } else {
+                            return (
+                              <div className="action-section">
+                                <div className="info-banner warning" style={{ padding: '1.25rem', border: '1px solid rgba(255, 179, 0, 0.25)', borderRadius: '16px', background: 'rgba(255, 179, 0, 0.05)', textAlign: 'left' }}>
+                                  <span style={{ fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>WAITING FOR TENANT DEPOSIT</span>
+                                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                    Lease initialized on-chain. Waiting for the tenant to deposit the security deposit funds.
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          }
+                        })()}
 
                         {/* Actions: Active state */}
                         {activeEscrowDetails.status === 1 && (() => {
