@@ -76,6 +76,15 @@
                 },
                 {
                   "u64": "100"
+                },
+                {
+                  "string": "Tenant Name"
+                },
+                {
+                  "string": "Landlord Name"
+                },
+                {
+                  "string": "1234********3456"
                 }
               ]
             }

@@ -22,7 +22,33 @@ if (typeof window !== 'undefined') {
 const RPC_URL = 'https://soroban-testnet.stellar.org:443';
 const NETWORK_PASSPHRASE = Networks.TESTNET;
 const BACKEND_URL = 'http://localhost:5000';
-const DEFAULT_CONTRACT_ID = 'CB73PR6EHRVRRQ5NUVI4VQ7XIUYYJ7KQAXPDX2YIHPTDNHNKLU2UFJ4B';
+const DEFAULT_CONTRACT_ID = 'CDZOCNE6CLCD5JFWTQ46JRYGFHGX6WQ7U7NTZ6NDCCSBYHXMRBWYUHZP';
+
+// Formatting & Privacy Helpers
+const formatXlmAmount = (val) => {
+  const num = Number(val);
+  if (isNaN(num)) return '0';
+  let str = num.toFixed(7);
+  str = str.replace(/\.?0+$/, '');
+  return str;
+};
+
+const getSpoileredLeaseId = (leaseIdStr) => {
+  if (!leaseIdStr) return '';
+  const str = String(leaseIdStr);
+  if (str.length < 8) return str;
+  return `${str.slice(0, 4)}********${str.slice(-4)}`;
+};
+
+const fnv1a64 = (str) => {
+  let hash = 14695981039346656037n; // FNV offset basis
+  const s = String(str);
+  for (let i = 0; i < s.length; i++) {
+    hash ^= BigInt(s.charCodeAt(i));
+    hash = (hash * 1099511628211n) & 0xffffffffffffffffn; // FNV prime & mask to 64-bit
+  }
+  return hash;
+};
 
 const PREDEFINED_DURATIONS = [
   30,          // 30 seconds (for testing)
@@ -440,7 +466,7 @@ function App() {
     setErrorDetails(null);
 
     try {
-      const leaseId = BigInt(idStr);
+      const leaseId = fnv1a64(idStr);
       const leaseIdVal = nativeToScVal(leaseId, { type: 'u64' });
 
       // Try to fetch from backend API first
@@ -603,14 +629,19 @@ function App() {
 
       console.log('Initializing escrow contract', contractAddress, 'with Lease ID', leaseIdStr);
       
+      const spoileredLeaseId = getSpoileredLeaseId(leaseIdStr);
+
       const args = [
-        nativeToScVal(leaseId, { type: 'u64' }),
+        nativeToScVal(fnv1a64(leaseIdStr), { type: 'u64' }),
         nativeToScVal(tenant, { type: 'address' }), // tenant address from form
         nativeToScVal(userAddress, { type: 'address' }), // landlord (connected userAddress)
         nativeToScVal(arbitrator, { type: 'address' }),
         nativeToScVal(tokenAddress, { type: 'address' }),
         nativeToScVal(BigInt(Math.floor(parseFloat(amount) * 10_000_000)), { type: 'i128' }),
-        nativeToScVal(BigInt(lockDurationSeconds), { type: 'u64' }) // lock duration in seconds
+        nativeToScVal(BigInt(lockDurationSeconds), { type: 'u64' }), // lock duration in seconds
+        nativeToScVal(tenantName || 'Tenant', { type: 'string' }),
+        nativeToScVal(landlordName || 'Landlord', { type: 'string' }),
+        nativeToScVal(spoileredLeaseId, { type: 'string' })
       ];
 
       await executeTx(contractAddress, 'initialize', args);
@@ -684,7 +715,7 @@ function App() {
 
     setIsFunding(true);
     try {
-      const leaseId = BigInt(leaseIdStr);
+      const leaseId = fnv1a64(leaseIdStr);
       await executeTx(activeEscrowDetails.address, 'fund', [nativeToScVal(leaseId, { type: 'u64' })]);
 
       // Update offline DB
@@ -724,7 +755,7 @@ function App() {
 
     setIsProposing(true);
     try {
-      const leaseId = BigInt(leaseIdStr);
+      const leaseId = fnv1a64(leaseIdStr);
       const leaseIdVal = nativeToScVal(leaseId, { type: 'u64' });
 
       const args = [
@@ -816,7 +847,7 @@ function App() {
 
     setIsRaisingDispute(true);
     try {
-      const leaseId = BigInt(leaseIdStr);
+      const leaseId = fnv1a64(leaseIdStr);
       const args = [
         nativeToScVal(leaseId, { type: 'u64' }),
         nativeToScVal(userAddress, { type: 'address' }),
@@ -868,7 +899,7 @@ function App() {
 
     setIsResolving(true);
     try {
-      const leaseId = BigInt(leaseIdStr);
+      const leaseId = fnv1a64(leaseIdStr);
       const args = [
         nativeToScVal(leaseId, { type: 'u64' }),
         nativeToScVal(BigInt(Math.floor(tenantAmt * 10_000_000)), { type: 'i128' }),
@@ -1290,21 +1321,15 @@ function App() {
 
                     {/* Simulation Error Panel */}
                     {errorDetails && (
-                      <div className="info-banner error" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '0.75rem', padding: '1.25rem', borderRadius: '16px', background: 'rgba(255, 23, 68, 0.05)', border: '1px solid rgba(255, 23, 68, 0.15)', width: '100%' }}>
-                        <span style={{ fontWeight: 700, fontSize: '0.9rem', letterSpacing: '0.05em', color: 'var(--color-error)' }}>
-                          ⚠️ ON-CHAIN SIMULATION ERROR
-                        </span>
-                        
-                        <div style={{ background: 'rgba(0, 0, 0, 0.2)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '0.75rem 1rem' }}>
-                          <span style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>LEASE ID</span>
-                          <span className="address-mono" style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-primary)' }}>{errorDetails.leaseId}</span>
-                        </div>
-
-                        <div style={{ background: 'rgba(0, 0, 0, 0.2)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '0.75rem 1rem' }}>
-                          <span style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>ERROR DETAIL</span>
-                          <p style={{ fontSize: '0.8rem', lineHeight: 1.5, color: 'var(--text-secondary)', margin: 0, wordBreak: 'break-word', whiteSpace: 'normal' }}>
-                            {errorDetails.message}. Make sure the lease has been initialized on-chain.
-                          </p>
+                      <div className="info-banner error" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1.25rem', borderRadius: '16px', background: 'rgba(255, 23, 68, 0.05)', border: '1px solid rgba(255, 23, 68, 0.15)', width: '100%' }}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-error)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px', flexShrink: 0 }}>
+                          <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon>
+                          <line x1="12" y1="9" x2="12" y2="13"></line>
+                          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', textAlign: 'left' }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--color-error)', letterSpacing: '0.05em' }}>ERROR</span>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>This ID is invalid.</span>
                         </div>
                       </div>
                     )}
@@ -1351,7 +1376,7 @@ function App() {
                         <div className="escrow-stats">
                           <div className="stat-item">
                             <span className="stat-label">TOTAL ESCROW AMOUNT</span>
-                            <span className="address-mono stat-value">{`${Number(activeEscrowDetails.amount).toFixed(7)} XLM`}</span>
+                            <span className="address-mono stat-value">{`${formatXlmAmount(activeEscrowDetails.amount)} XLM`}</span>
                           </div>
                           <div className="stat-item">
                             <span className="stat-label">LEASE ID</span>
@@ -1407,7 +1432,7 @@ function App() {
                                   <div className="info-banner success" style={{ padding: '1.25rem', border: '1px solid var(--border-color)', borderRadius: '16px', background: 'rgba(255,255,255,0.01)', textAlign: 'left' }}>
                                     <span style={{ fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>SETTLEMENT PROPOSAL SUBMITTED</span>
                                     <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                      You proposed: <strong>Tenant {Number(activeEscrowDetails.tenantProposal[0]).toFixed(7)} XLM / Landlord {Number(activeEscrowDetails.tenantProposal[1]).toFixed(7)} XLM</strong>.
+                                      You proposed: <strong>Tenant {formatXlmAmount(activeEscrowDetails.tenantProposal[0])} XLM / Landlord {formatXlmAmount(activeEscrowDetails.tenantProposal[1])} XLM</strong>.
                                     </p>
                                     <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                                       Waiting for Landlord review. You cannot perform further actions.
@@ -1442,12 +1467,12 @@ function App() {
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', textAlign: 'left', fontSize: '0.85rem' }}>
                                     {activeEscrowDetails.tenantProposal && (
                                       <span>
-                                        <strong>Tenant proposed:</strong> Tenant {Number(activeEscrowDetails.tenantProposal[0]).toFixed(7)} XLM / Landlord {Number(activeEscrowDetails.tenantProposal[1]).toFixed(7)} XLM
+                                        <strong>Tenant proposed:</strong> Tenant {formatXlmAmount(activeEscrowDetails.tenantProposal[0])} XLM / Landlord {formatXlmAmount(activeEscrowDetails.tenantProposal[1])} XLM
                                       </span>
                                     )}
                                     {activeEscrowDetails.landlordProposal && (
                                       <span>
-                                        <strong>Landlord proposed:</strong> Tenant {Number(activeEscrowDetails.landlordProposal[0]).toFixed(7)} XLM / Landlord {Number(activeEscrowDetails.landlordProposal[1]).toFixed(7)} XLM
+                                        <strong>Landlord proposed:</strong> Tenant {formatXlmAmount(activeEscrowDetails.landlordProposal[0])} XLM / Landlord {formatXlmAmount(activeEscrowDetails.landlordProposal[1])} XLM
                                       </span>
                                     )}
                                   </div>
@@ -1457,8 +1482,8 @@ function App() {
                               {/* Range Slider for proposals */}
                               <div className="slider-container">
                                 <div className="slider-labels">
-                                  <span>TO TENANT: <strong className="address-mono">{`${Number(rangeSplitVal).toFixed(7)} XLM`}</strong></span>
-                                  <span>TO LANDLORD: <strong className="address-mono">{`${Number(activeEscrowDetails.amount - rangeSplitVal).toFixed(7)} XLM`}</strong></span>
+                                  <span>TO TENANT: <strong className="address-mono">{`${formatXlmAmount(rangeSplitVal)} XLM`}</strong></span>
+                                  <span>TO LANDLORD: <strong className="address-mono">{`${formatXlmAmount(activeEscrowDetails.amount - rangeSplitVal)} XLM`}</strong></span>
                                 </div>
                                 {/* Locked banner */}
                                 {isLocked && (
@@ -1524,11 +1549,11 @@ function App() {
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                                           <span style={{ color: 'var(--text-secondary)' }}>To Tenant:</span>
-                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{Number(activeEscrowDetails.tenantProposal[0]).toFixed(7)} XLM</strong>
+                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{formatXlmAmount(activeEscrowDetails.tenantProposal[0])} XLM</strong>
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                                           <span style={{ color: 'var(--text-secondary)' }}>To Landlord:</span>
-                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{Number(activeEscrowDetails.tenantProposal[1]).toFixed(7)} XLM</strong>
+                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{formatXlmAmount(activeEscrowDetails.tenantProposal[1])} XLM</strong>
                                         </div>
                                       </div>
                                     ) : (
@@ -1544,11 +1569,11 @@ function App() {
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                                           <span style={{ color: 'var(--text-secondary)' }}>To Tenant:</span>
-                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{Number(activeEscrowDetails.landlordProposal[0]).toFixed(7)} XLM</strong>
+                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{formatXlmAmount(activeEscrowDetails.landlordProposal[0])} XLM</strong>
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                                           <span style={{ color: 'var(--text-secondary)' }}>To Landlord:</span>
-                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{Number(activeEscrowDetails.landlordProposal[1]).toFixed(7)} XLM</strong>
+                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{formatXlmAmount(activeEscrowDetails.landlordProposal[1])} XLM</strong>
                                         </div>
                                       </div>
                                     ) : (
@@ -1559,8 +1584,8 @@ function App() {
 
                                 <div className="slider-container">
                                   <div className="slider-labels">
-                                    <span>TO TENANT: <strong className="address-mono">{`${Number(rangeArbVal).toFixed(7)} XLM`}</strong></span>
-                                    <span>TO LANDLORD: <strong className="address-mono">{`${Number(activeEscrowDetails.amount - rangeArbVal).toFixed(7)} XLM`}</strong></span>
+                                    <span>TO TENANT: <strong className="address-mono">{`${formatXlmAmount(rangeArbVal)} XLM`}</strong></span>
+                                    <span>TO LANDLORD: <strong className="address-mono">{`${formatXlmAmount(activeEscrowDetails.amount - rangeArbVal)} XLM`}</strong></span>
                                   </div>
                                   {/* Locked banner */}
                                   {isLocked && (
@@ -1612,11 +1637,11 @@ function App() {
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                                           <span style={{ color: 'var(--text-secondary)' }}>To Tenant:</span>
-                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{Number(activeEscrowDetails.tenantProposal[0]).toFixed(7)} XLM</strong>
+                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{formatXlmAmount(activeEscrowDetails.tenantProposal[0])} XLM</strong>
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                                           <span style={{ color: 'var(--text-secondary)' }}>To Landlord:</span>
-                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{Number(activeEscrowDetails.tenantProposal[1]).toFixed(7)} XLM</strong>
+                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{formatXlmAmount(activeEscrowDetails.tenantProposal[1])} XLM</strong>
                                         </div>
                                       </div>
                                     ) : (
@@ -1632,11 +1657,11 @@ function App() {
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                                           <span style={{ color: 'var(--text-secondary)' }}>To Tenant:</span>
-                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{Number(activeEscrowDetails.landlordProposal[0]).toFixed(7)} XLM</strong>
+                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{formatXlmAmount(activeEscrowDetails.landlordProposal[0])} XLM</strong>
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                                           <span style={{ color: 'var(--text-secondary)' }}>To Landlord:</span>
-                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{Number(activeEscrowDetails.landlordProposal[1]).toFixed(7)} XLM</strong>
+                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{formatXlmAmount(activeEscrowDetails.landlordProposal[1])} XLM</strong>
                                         </div>
                                       </div>
                                     ) : (
@@ -1872,20 +1897,27 @@ function App() {
       <footer className="footer">
         <div className="footer-inner">
           <span>DEPOSHIELD POWERED BY STELLAR SOROBAN SMART CONTRACT PROTOCOL</span>
-          <a 
-            href={`https://stellar.expert/explorer/testnet/contract/${DEFAULT_CONTRACT_ID}`} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="btn btn-secondary pill-btn footer-btn" 
-            style={{ padding: '0.45rem 1rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontFamily: 'var(--font-mono)', border: '1px solid var(--border-color)', textDecoration: 'none', borderRadius: '20px' }}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
-              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-              <polyline points="15 3 21 3 21 9"></polyline>
-              <line x1="10" y1="14" x2="21" y2="3"></line>
-            </svg>
-            VIEW SHARED CONTRACT
-          </a>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+            <a 
+              href={`https://stellar.expert/explorer/testnet/contract/${DEFAULT_CONTRACT_ID}`} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="btn btn-secondary pill-btn footer-btn" 
+              style={{ padding: '0.45rem 1rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontFamily: 'var(--font-mono)', border: '1px solid var(--border-color)', textDecoration: 'none', borderRadius: '20px' }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <line x1="10" y1="14" x2="21" y2="3"></line>
+              </svg>
+              VIEW SHARED CONTRACT
+            </a>
+            {activeEscrowDetails && (
+              <div style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginTop: '0.25rem', textAlign: 'center' }}>
+                Explorer Verification &rarr; Tenant: <strong>{activeEscrowDetails.tenantName}</strong> | Landlord: <strong>{activeEscrowDetails.landlordName}</strong> | Lease: <strong>{getSpoileredLeaseId(activeEscrowDetails.leaseId)}</strong>
+              </div>
+            )}
+          </div>
           <div className="status-indicator">
             <span className="status-dot green"></span>
             <span className="status-text font-mono">TESTNET ONLINE</span>

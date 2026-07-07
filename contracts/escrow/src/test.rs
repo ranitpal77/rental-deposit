@@ -3,7 +3,7 @@ use crate::{EscrowContract, EscrowContractClient};
 use soroban_sdk::{
     testutils::Address as _,
     token::{self, StellarAssetClient},
-    Address, Env,
+    Address, Env, String,
 };
 
 fn setup_test<'a>(env: &'a Env) -> (EscrowContractClient<'a>, Address, Address, Address, Address, token::Client<'a>) {
@@ -29,12 +29,37 @@ fn setup_test<'a>(env: &'a Env) -> (EscrowContractClient<'a>, Address, Address, 
     (client, tenant, landlord, arbitrator, token_address, token_client)
 }
 
+fn initialize_escrow<'a>(
+    env: &Env,
+    client: &EscrowContractClient<'a>,
+    lease_id: u64,
+    tenant: &Address,
+    landlord: &Address,
+    arbitrator: &Address,
+    token_address: &Address,
+    amount: i128,
+    lock_duration: u64,
+) {
+    client.initialize(
+        &lease_id,
+        tenant,
+        landlord,
+        arbitrator,
+        token_address,
+        &amount,
+        &lock_duration,
+        &String::from_str(env, "Tenant Name"),
+        &String::from_str(env, "Landlord Name"),
+        &String::from_str(env, "1234********3456"),
+    );
+}
+
 #[test]
 fn test_initialize_and_getters() {
     let env = Env::default();
     let (client, tenant, landlord, arbitrator, token_address, _token_client) = setup_test(&env);
 
-    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &500, &0u64);
+    initialize_escrow(&env, &client, 1u64, &tenant, &landlord, &arbitrator, &token_address, 500, 0u64);
 
     assert_eq!(client.get_tenant(&1u64), tenant);
     assert_eq!(client.get_landlord(&1u64), landlord);
@@ -52,8 +77,8 @@ fn test_cannot_double_initialize() {
     let env = Env::default();
     let (client, tenant, landlord, arbitrator, token_address, _token_client) = setup_test(&env);
 
-    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &500, &0u64);
-    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &500, &0u64);
+    initialize_escrow(&env, &client, 1u64, &tenant, &landlord, &arbitrator, &token_address, 500, 0u64);
+    initialize_escrow(&env, &client, 1u64, &tenant, &landlord, &arbitrator, &token_address, 500, 0u64);
 }
 
 #[test]
@@ -62,7 +87,7 @@ fn test_cannot_initialize_with_zero_amount() {
     let env = Env::default();
     let (client, tenant, landlord, arbitrator, token_address, _token_client) = setup_test(&env);
 
-    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &0, &0u64);
+    initialize_escrow(&env, &client, 1u64, &tenant, &landlord, &arbitrator, &token_address, 0, 0u64);
 }
 
 #[test]
@@ -71,7 +96,7 @@ fn test_fund() {
     let (client, tenant, landlord, arbitrator, token_address, token_client) = setup_test(&env);
 
     let amount = 500;
-    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &amount, &0u64);
+    initialize_escrow(&env, &client, 1u64, &tenant, &landlord, &arbitrator, &token_address, amount, 0u64);
 
     assert_eq!(token_client.balance(&tenant), 1000);
     assert_eq!(token_client.balance(&client.address), 0);
@@ -90,7 +115,7 @@ fn test_cannot_fund_twice() {
     let env = Env::default();
     let (client, tenant, landlord, arbitrator, token_address, _token_client) = setup_test(&env);
 
-    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &500, &0u64);
+    initialize_escrow(&env, &client, 1u64, &tenant, &landlord, &arbitrator, &token_address, 500, 0u64);
     client.fund(&1u64);
     client.fund(&1u64);
 }
@@ -100,7 +125,7 @@ fn test_mutual_release_perfect_agreement() {
     let env = Env::default();
     let (client, tenant, landlord, arbitrator, token_address, token_client) = setup_test(&env);
 
-    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &500, &0u64);
+    initialize_escrow(&env, &client, 1u64, &tenant, &landlord, &arbitrator, &token_address, 500, 0u64);
     client.fund(&1u64);
 
     // Tenant proposes split: 400 to tenant, 100 to landlord
@@ -123,7 +148,7 @@ fn test_mutual_release_conflicting_proposals_auto_disputes() {
     let env = Env::default();
     let (client, tenant, landlord, arbitrator, token_address, _token_client) = setup_test(&env);
 
-    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &500, &0u64);
+    initialize_escrow(&env, &client, 1u64, &tenant, &landlord, &arbitrator, &token_address, 500, 0u64);
     client.fund(&1u64);
 
     // Tenant proposes split: 400 to tenant, 100 to landlord
@@ -144,7 +169,7 @@ fn test_propose_release_invalid_sum() {
     let env = Env::default();
     let (client, tenant, landlord, arbitrator, token_address, _token_client) = setup_test(&env);
 
-    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &500, &0u64);
+    initialize_escrow(&env, &client, 1u64, &tenant, &landlord, &arbitrator, &token_address, 500, 0u64);
     client.fund(&1u64);
 
     client.propose_release(&1u64, &tenant, &300, &100); // sums to 400, not 500
@@ -155,7 +180,7 @@ fn test_dispute_and_arbitrator_resolution() {
     let env = Env::default();
     let (client, tenant, landlord, arbitrator, token_address, token_client) = setup_test(&env);
 
-    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &500, &0u64);
+    initialize_escrow(&env, &client, 1u64, &tenant, &landlord, &arbitrator, &token_address, 500, 0u64);
     client.fund(&1u64);
 
     // Tenant declares dispute
@@ -180,7 +205,7 @@ fn test_arbitrator_cannot_resolve_if_not_disputed() {
     let env = Env::default();
     let (client, tenant, landlord, arbitrator, token_address, _token_client) = setup_test(&env);
 
-    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &500, &0u64);
+    initialize_escrow(&env, &client, 1u64, &tenant, &landlord, &arbitrator, &token_address, 500, 0u64);
     client.fund(&1u64);
 
     client.resolve_dispute(&1u64, &350, &150);
@@ -191,8 +216,8 @@ fn test_multiple_leases_are_isolated() {
     let env = Env::default();
     let (client, tenant, landlord, arbitrator, token_address, _token_client) = setup_test(&env);
 
-    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &500, &0u64);
-    client.initialize(&2u64, &tenant, &landlord, &arbitrator, &token_address, &300, &0u64);
+    initialize_escrow(&env, &client, 1u64, &tenant, &landlord, &arbitrator, &token_address, 500, 0u64);
+    initialize_escrow(&env, &client, 2u64, &tenant, &landlord, &arbitrator, &token_address, 300, 0u64);
 
     assert_eq!(client.get_amount(&1u64), 500);
     assert_eq!(client.get_amount(&2u64), 300);
@@ -206,7 +231,7 @@ fn test_lock_period_starts_only_after_tenant_proposal() {
     let (client, tenant, landlord, arbitrator, token_address, _token_client) = setup_test(&env);
 
     // Initialize with a 100-second lock duration
-    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &500, &100u64);
+    initialize_escrow(&env, &client, 1u64, &tenant, &landlord, &arbitrator, &token_address, 500, 100u64);
     client.fund(&1u64);
 
     // Lock has not started yet (unlock time is 0)
@@ -226,7 +251,7 @@ fn test_landlord_cannot_propose_during_lock_duration() {
     let (client, tenant, landlord, arbitrator, token_address, _token_client) = setup_test(&env);
 
     // Initialize with a 100-second lock duration
-    client.initialize(&1u64, &tenant, &landlord, &arbitrator, &token_address, &500, &100u64);
+    initialize_escrow(&env, &client, 1u64, &tenant, &landlord, &arbitrator, &token_address, 500, 100u64);
     client.fund(&1u64);
 
     // Tenant proposes split: starts the lock

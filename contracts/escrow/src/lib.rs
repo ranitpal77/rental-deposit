@@ -33,6 +33,9 @@ impl EscrowContract {
         token: Address,
         amount: i128,
         lock_duration: u64,
+        tenant_name: String,
+        landlord_name: String,
+        spoilered_lease_id: String,
     ) {
         landlord.require_auth();
 
@@ -53,6 +56,12 @@ impl EscrowContract {
         env.storage().persistent().set(&DataKey::Status(lease_id), &0u32);
         env.storage().persistent().set(&DataKey::LockDuration(lease_id), &lock_duration);
         env.storage().persistent().set(&DataKey::UnlockTime(lease_id), &0u64);
+
+        // Publish initialization event showing names and spoilered Lease ID
+        env.events().publish(
+            (symbol_short!("init"), tenant_name, landlord_name),
+            spoilered_lease_id,
+        );
     }
 
     pub fn fund(env: Env, lease_id: u64) {
