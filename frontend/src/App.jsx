@@ -21,7 +21,9 @@ if (typeof window !== 'undefined') {
 // Config
 const RPC_URL = 'https://soroban-testnet.stellar.org:443';
 const NETWORK_PASSPHRASE = Networks.TESTNET;
-const BACKEND_URL = 'http://localhost:5000';
+const BACKEND_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:5000'
+  : '';
 const DEFAULT_CONTRACT_ID = 'CBFMZXLLIW2JUUWOC4ZQEJWRQCIGJEY34SHCVUDVIZ7NFVONF3G63LO6';
 
 // Formatting & Privacy Helpers
