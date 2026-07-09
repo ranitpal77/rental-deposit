@@ -78,16 +78,25 @@ const rpcServer = new Server(RPC_URL);
 
 // Helper for local storage database
 const getLocalEscrows = () => {
-  const data = localStorage.getItem('deposhield_escrows');
-  if (!data) {
-    localStorage.setItem('deposhield_escrows', JSON.stringify([]));
+  try {
+    const data = localStorage.getItem('deposhield_escrows');
+    if (!data) {
+      localStorage.setItem('deposhield_escrows', JSON.stringify([]));
+      return [];
+    }
+    const parsed = JSON.parse(data);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
     return [];
   }
-  return JSON.parse(data);
 };
 
 const saveLocalEscrows = (escrows) => {
-  localStorage.setItem('deposhield_escrows', JSON.stringify(escrows));
+  try {
+    localStorage.setItem('deposhield_escrows', JSON.stringify(Array.isArray(escrows) ? escrows : []));
+  } catch (e) {
+    console.error('Failed to save escrows to local storage:', e);
+  }
 };
 
 function App() {
@@ -465,7 +474,7 @@ function App() {
       let disputeCount = 0;
 
       escrows.forEach(escrow => {
-        const status = escrow.status.toLowerCase();
+        const status = String(escrow.status || '').toLowerCase();
         const amount = parseFloat(escrow.amount) || 0;
         
         if (status === 'active') {
@@ -1239,7 +1248,7 @@ function App() {
 
   // Status Badge Class parser
   const getStatusBadgeClass = (statusStr) => {
-    switch (statusStr.toLowerCase()) {
+    switch (String(statusStr || '').toLowerCase()) {
       case 'active': return 'status-active';
       case 'disputed': return 'status-disputed';
       case 'created': return 'status-created';
@@ -2038,7 +2047,10 @@ function App() {
                   {!userAddress ? (
                     <div className="dashboard-placeholder">Please connect your wallet to view your active escrows.</div>
                   ) : (() => {
-                    const activeEscrows = dashboardEscrows.filter(e => e.status.toLowerCase() !== 'released' && e.status.toLowerCase() !== 'released (disputed)' && e.status.toLowerCase() !== 'resolved');
+                    const activeEscrows = dashboardEscrows.filter(e => {
+                      const status = String(e.status || '').toLowerCase();
+                      return status !== 'released' && status !== 'released (disputed)' && status !== 'resolved';
+                    });
                     
                     if (activeEscrows.length === 0) {
                       return <div className="dashboard-placeholder">No active escrows registered for this wallet.</div>;
