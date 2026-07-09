@@ -65,7 +65,7 @@ app.get('/api/escrows/:leaseId', (req, res) => {
 });
 
 app.post('/api/escrows', (req, res) => {
-  const { leaseId, address, tenant, tenantName, landlord, landlordName, arbitrator, arbitratorName, amount, title, description, txHash } = req.body;
+  const { leaseId, address, tenant, tenantName, landlord, landlordName, arbitrator, arbitratorName, amount, title, description, status, txHash } = req.body;
   
   if (!leaseId || !address || !tenant || !landlord || !amount) {
     return res.status(400).json({ error: 'Missing required escrow fields' });
@@ -73,9 +73,19 @@ app.post('/api/escrows', (req, res) => {
 
   escrows = loadEscrows();
 
+  // Map numeric status to string status if applicable
+  let mappedStatus = status;
+  if (mappedStatus === 0 || mappedStatus === '0') mappedStatus = 'Created';
+  else if (mappedStatus === 1 || mappedStatus === '1') mappedStatus = 'Active';
+  else if (mappedStatus === 2 || mappedStatus === '2') mappedStatus = 'Disputed';
+  else if (mappedStatus === 3 || mappedStatus === '3') mappedStatus = 'Released';
+  else if (!mappedStatus) mappedStatus = 'Created';
+
   const finalTxHash = txHash || req.body.txHash || (req.body.history && req.body.history[0] && req.body.history[0].txHash);
 
-  const newEscrow = {
+  const existingIdx = escrows.findIndex(e => e.leaseId.toString() === leaseId.toString());
+
+  const escrowData = {
     leaseId,
     address,
     tenant,
@@ -85,21 +95,27 @@ app.post('/api/escrows', (req, res) => {
     arbitrator: arbitrator || 'GAARBITRATOR77O76P6RYMFLZ26J6R74WSHU6DCOFHRFDFYJZ4TZZ2JARBI',
     arbitratorName: arbitratorName || 'Metropolitan Housing Authority',
     amount,
-    status: 'Created',
+    status: mappedStatus,
     title: title || 'Rental Escrow Deposit',
     description: description || 'Security deposit for rental contract',
-    history: req.body.history || [
+    history: req.body.history || (existingIdx >= 0 ? escrows[existingIdx].history : [
       { timestamp: new Date().toISOString(), event: 'Escrow Created & Initialized', txHash: finalTxHash, callerRole: 'Landlord' }
-    ]
+    ])
   };
 
-  escrows.push(newEscrow);
-  saveEscrows(escrows);
-  
-  // Notify landlord of initialization
-  sendNotification(newEscrow.landlordName, 'Landlord', `A new rental security deposit escrow has been initialized for you by ${newEscrow.tenantName}. Lease ID: ${leaseId}. Amount: ${amount}. Please review the terms.`, finalTxHash);
+  if (existingIdx >= 0) {
+    // Update existing escrow details
+    escrows[existingIdx] = escrowData;
+  } else {
+    // Add new escrow
+    escrows.push(escrowData);
+    // Only send notification for new escrows to prevent spam on loads/syncs
+    sendNotification(escrowData.landlordName, 'Landlord', `A new rental security deposit escrow has been initialized for you by ${escrowData.tenantName}. Lease ID: ${leaseId}. Amount: ${amount}. Please review the terms.`, finalTxHash);
+  }
 
-  res.status(201).json(newEscrow);
+  saveEscrows(escrows);
+
+  res.status(existingIdx >= 0 ? 200 : 201).json(escrowData);
 });
 
 app.post('/api/escrows/:leaseId/fund', (req, res) => {

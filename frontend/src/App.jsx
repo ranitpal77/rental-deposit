@@ -477,15 +477,15 @@ function App() {
         const status = String(escrow.status || '').toLowerCase();
         const amount = parseFloat(escrow.amount) || 0;
         
-        if (status === 'active') {
+        if (status === 'active' || status === '1') {
           activeCount++;
           tvl += amount;
-        } else if (status === 'disputed') {
+        } else if (status === 'disputed' || status === '2') {
           disputeCount++;
           tvl += amount;
-        } else if (status === 'released' || status === 'released (disputed)' || status === 'resolved') {
+        } else if (status === 'released' || status === 'released (disputed)' || status === 'resolved' || status === '3') {
           resolvedCount++;
-        } else if (status === 'created') {
+        } else if (status === 'created' || status === '0') {
           activeCount++;
         }
       });
@@ -981,11 +981,11 @@ function App() {
         landlordName: ''
       });
 
-      loadDashboardEscrows();
       // Load details directly in workspace
       setActiveTab('manage');
       setSearchLeaseId(leaseIdStr);
-      handleLoadEscrow(leaseIdStr);
+      await handleLoadEscrow(leaseIdStr);
+      await loadDashboardEscrows();
       updateWalletBalance(userAddress);
     } catch (err) {
       console.error('Escrow initialization failed:', err);
@@ -1027,8 +1027,8 @@ function App() {
       }
 
       showToast('Escrow funded successfully on-chain! Funds locked in contract.', 'success', txHash);
-      handleLoadEscrow(leaseIdStr);
-      loadDashboardEscrows();
+      await handleLoadEscrow(leaseIdStr);
+      await loadDashboardEscrows();
       updateWalletBalance(userAddress);
     } catch (err) {
       console.error('Funding failed:', err);
@@ -1127,8 +1127,8 @@ function App() {
         saveLocalEscrows(escrows);
       }
 
-      handleLoadEscrow(leaseIdStr);
-      loadDashboardEscrows();
+      await handleLoadEscrow(leaseIdStr);
+      await loadDashboardEscrows();
       updateWalletBalance(userAddress);
     } catch (err) {
       console.error('Proposal split failed:', err);
@@ -1182,8 +1182,8 @@ function App() {
 
       showToast('Dispute successfully declared on-chain. Arbitrator has been notified.', 'success', txHash);
       setDisputeReasonInput('');
-      handleLoadEscrow(leaseIdStr);
-      loadDashboardEscrows();
+      await handleLoadEscrow(leaseIdStr);
+      await loadDashboardEscrows();
     } catch (err) {
       console.error('Dispute failed:', err);
       showToast(`Dispute transaction failed: ${getErrorMessage(err)}`, 'error');
@@ -1235,8 +1235,8 @@ function App() {
       }
 
       showToast('Dispute resolved by arbitrator. Funds distributed!', 'success', txHash);
-      handleLoadEscrow(leaseIdStr);
-      loadDashboardEscrows();
+      await handleLoadEscrow(leaseIdStr);
+      await loadDashboardEscrows();
       updateWalletBalance(userAddress);
     } catch (err) {
       console.error('Resolution failed:', err);
@@ -1249,13 +1249,33 @@ function App() {
   // Status Badge Class parser
   const getStatusBadgeClass = (statusStr) => {
     switch (String(statusStr || '').toLowerCase()) {
-      case 'active': return 'status-active';
-      case 'disputed': return 'status-disputed';
-      case 'created': return 'status-created';
+      case 'active':
+      case '1':
+        return 'status-active';
+      case 'disputed':
+      case '2':
+        return 'status-disputed';
+      case 'created':
+      case '0':
+        return 'status-created';
       case 'released':
-      case 'released (disputed)': return 'status-released';
+      case 'released (disputed)':
+      case 'resolved':
+      case '3':
+        return 'status-released';
       default: return 'status-released';
     }
+  };
+
+  const getStatusLabel = (statusStr) => {
+    const s = String(statusStr || '').toLowerCase();
+    if (s === 'created' || s === '0') return 'CREATED';
+    if (s === 'active' || s === '1') return 'ACTIVE';
+    if (s === 'disputed' || s === '2') return 'DISPUTED';
+    if (s === 'released' || s === '3') return 'RELEASED';
+    if (s === 'released (disputed)') return 'RELEASED (DISPUTED)';
+    if (s === 'resolved') return 'RESOLVED';
+    return s.toUpperCase();
   };
 
   return (
@@ -2049,7 +2069,7 @@ function App() {
                   ) : (() => {
                     const activeEscrows = dashboardEscrows.filter(e => {
                       const status = String(e.status || '').toLowerCase();
-                      return status !== 'released' && status !== 'released (disputed)' && status !== 'resolved';
+                      return status !== 'released' && status !== 'released (disputed)' && status !== 'resolved' && status !== '3';
                     });
                     
                     if (activeEscrows.length === 0) {
@@ -2076,7 +2096,7 @@ function App() {
                         </div>
                         <div className="escrow-row-stats">
                           <span className="escrow-row-amount address-mono">{escrow.amount}</span>
-                          <span className={`badge-status ${getStatusBadgeClass(escrow.status)}`}>{escrow.status.toUpperCase()}</span>
+                          <span className={`badge-status ${getStatusBadgeClass(escrow.status)}`}>{getStatusLabel(escrow.status)}</span>
                         </div>
                       </div>
                     ));
@@ -2094,7 +2114,7 @@ function App() {
                   ) : (() => {
                     const resolvedEscrows = dashboardEscrows.filter(e => {
                       const statusLower = String(e.status).toLowerCase();
-                      const isResolved = statusLower === 'released' || statusLower === 'released (disputed)' || statusLower === 'resolved';
+                      const isResolved = statusLower === 'released' || statusLower === 'released (disputed)' || statusLower === 'resolved' || statusLower === '3';
                       if (!isResolved) return false;
 
                       // Filter based on connected wallet role
@@ -2106,7 +2126,7 @@ function App() {
                       }
                       if (e.arbitrator === userAddress) {
                         // Arbitrator only sees disputes they were assigned to resolve
-                        const isDisputed = statusLower.includes('disput') || statusLower === 'resolved';
+                        const isDisputed = statusLower.includes('disput') || statusLower === 'resolved' || statusLower === '2' || statusLower === '3';
                         const hasDisputeEvent = e.history && e.history.some(h => 
                           String(h.event).toLowerCase().includes('dispute')
                         );
@@ -2134,7 +2154,7 @@ function App() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                             <span className="escrow-row-amount address-mono" style={{ fontSize: '1rem', fontWeight: 700 }}>{escrow.amount}</span>
                             <span className={`badge-status ${getStatusBadgeClass(escrow.status)}`}>
-                              {escrow.status.toUpperCase()}
+                              {getStatusLabel(escrow.status)}
                             </span>
                           </div>
                         </div>
