@@ -91,6 +91,7 @@ app.post('/api/escrows', (req, res) => {
     status: mappedStatus,
     title: title || 'Rental Escrow Deposit',
     description: description || 'Security deposit for rental contract',
+    disputeReason: req.body.disputeReason || (existingIdx >= 0 ? escrows[existingIdx].disputeReason : ''),
     history: req.body.history || (existingIdx >= 0 ? escrows[existingIdx].history : [
       { timestamp: new Date().toISOString(), event: 'Escrow Created & Initialized', txHash: finalTxHash, callerRole: 'Landlord' }
     ])
@@ -181,6 +182,7 @@ app.post('/api/escrows/:leaseId/dispute', (req, res) => {
   const callerRole = caller === escrow.tenant ? 'Tenant' : 'Landlord';
 
   escrow.status = 'Disputed';
+  escrow.disputeReason = reason;
   escrow.history.push({ 
     timestamp: new Date().toISOString(), 
     event: `Dispute declared by ${callerRole}. Reason: "${reason}"`,

@@ -115,6 +115,8 @@ function App() {
   const [activeEscrowDetails, setActiveEscrowDetails] = useState(null);
   const [errorDetails, setErrorDetails] = useState(null);
   const [disputeReasonInput, setDisputeReasonInput] = useState('');
+  const [landlordDisputeReason, setLandlordDisputeReason] = useState('');
+  const [showDisputeReasonError, setShowDisputeReasonError] = useState(false);
 
   // Split sliders
   const [rangeSplitVal, setRangeSplitVal] = useState(0);
@@ -612,6 +614,8 @@ function App() {
     if (!idStr) return;
     setActiveEscrowDetails(null);
     setErrorDetails(null);
+    setLandlordDisputeReason('');
+    setShowDisputeReasonError(false);
 
     try {
       const leaseId = fnv1a64(idStr);
@@ -827,7 +831,7 @@ function App() {
         description: metadata.description,
         tenantProposal,
         landlordProposal,
-        disputeReason,
+        disputeReason: metadata.disputeReason || disputeReason,
         unlockTime,
         history: (metadata && metadata.history && metadata.history.length > 0) 
           ? metadata.history 
@@ -1045,6 +1049,14 @@ function App() {
     const tenantAmt = rangeSplitVal;
     const landlordAmt = activeEscrowDetails.amount - tenantAmt;
 
+    const isCurrentUserLandlord = userAddress === activeEscrowDetails.landlord;
+    const isConflict = activeEscrowDetails.tenantProposal && tenantAmt !== Number(activeEscrowDetails.tenantProposal[0]);
+    if (isCurrentUserLandlord && isConflict && !landlordDisputeReason.trim()) {
+      setShowDisputeReasonError(true);
+      showToast('You must provide a dispute reason before submitting a conflicting proposal.', 'error');
+      return;
+    }
+
     setIsProposing(true);
     try {
       const leaseId = fnv1a64(leaseIdStr);
@@ -1087,10 +1099,15 @@ function App() {
             console.warn('Backend sync failed:', err);
           }
         } else if (Number(currentStatus) === 2) {
+          const finalReason = (isCurrentUserLandlord && isConflict) 
+            ? landlordDisputeReason.trim() 
+            : 'Conflicting release splits proposed';
+          
           escrow.status = 'Disputed';
+          escrow.disputeReason = finalReason;
           escrow.history.push({ 
             timestamp: new Date().toISOString(), 
-            event: `Conflicting proposal submitted! Escrow automatically transitioned to Disputed.`,
+            event: `Conflicting proposal submitted! Escrow automatically transitioned to Disputed. Reason: "${finalReason}"`,
             txHash,
             callerRole
           });
@@ -1100,11 +1117,13 @@ function App() {
             await fetch(`${BACKEND_URL}/api/escrows/${leaseIdStr}/dispute`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ caller: userAddress, reason: 'Conflicting release splits proposed', txHash })
+              body: JSON.stringify({ caller: userAddress, reason: finalReason, txHash })
             });
           } catch (err) {
             console.warn('Backend sync failed:', err);
           }
+          setLandlordDisputeReason('');
+          setShowDisputeReasonError(false);
         } else {
           escrow.history.push({ 
             timestamp: new Date().toISOString(), 
@@ -1837,6 +1856,48 @@ function App() {
                                   style={isLocked ? { cursor: 'not-allowed', opacity: 0.5 } : {}}
                                 />
                               </div>
+
+                              {isCurrentUserLandlord && (
+                                <div className="form-group" style={{ marginTop: '1.25rem', marginBottom: '1.25rem' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <label htmlFor="landlord-dispute-reason">RAISE DISPUTE REASON</label>
+                                    {rangeSplitVal !== Number(activeEscrowDetails.tenantProposal?.[0]) && (
+                                      <span style={{ fontSize: '0.65rem', color: 'var(--color-error)', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>REQUIRED (CONFLICTING PROPOSAL)</span>
+                                    )}
+                                  </div>
+                                  <textarea
+                                    id="landlord-dispute-reason"
+                                    placeholder={
+                                      rangeSplitVal === Number(activeEscrowDetails.tenantProposal?.[0])
+                                        ? "Dispute reason disabled (your proposal matches Tenant's split)"
+                                        : "Enter reason for conflicting proposal/dispute..."
+                                    }
+                                    rows="3"
+                                    value={landlordDisputeReason}
+                                    onChange={(e) => {
+                                      setLandlordDisputeReason(e.target.value);
+                                      if (e.target.value.trim()) {
+                                        setShowDisputeReasonError(false);
+                                      }
+                                    }}
+                                    disabled={rangeSplitVal === Number(activeEscrowDetails.tenantProposal?.[0])}
+                                    style={{
+                                      opacity: (rangeSplitVal === Number(activeEscrowDetails.tenantProposal?.[0])) ? 0.5 : 1,
+                                      cursor: (rangeSplitVal === Number(activeEscrowDetails.tenantProposal?.[0])) ? 'not-allowed' : 'text',
+                                      backgroundColor: (rangeSplitVal === Number(activeEscrowDetails.tenantProposal?.[0])) ? 'rgba(255,255,255,0.01)' : 'var(--surface-color-light)',
+                                      borderColor: showDisputeReasonError ? 'var(--color-error)' : 'var(--border-color)',
+                                      borderRadius: '12px',
+                                      padding: '0.9rem 1.1rem',
+                                      color: 'var(--text-primary)',
+                                      fontFamily: 'var(--font-sans)',
+                                      fontSize: '0.95rem',
+                                      transition: 'border-color var(--transition-fast), outline var(--transition-fast)',
+                                      width: '100%',
+                                      resize: 'vertical'
+                                    }}
+                                  />
+                                </div>
+                              )}
 
                               <button 
                                 onClick={handleProposeSplit} 

@@ -419,17 +419,20 @@ All user feedback was collected via a [Google Form](https://forms.gle/1s3Abvi6QE
 ![Deployed Contract](./assets/deployed-contract-02.png)
 
 #### 📸 UI Screenshot
-![UI Screenshot](./assets/UI.png)
+![UI Screenshot](./assets/UI-02.png)
 
 #### 📸 Mobile Responsive View
-![Mobile Responsive View](./assets/Mobile-UI-Screenshot.png)
+![Mobile Responsive View](./assets/Mobile-UI-Screenshot-02.png)
 
 #### 📸 Test Output
-![Test Output](./assets/cargo-test-output-02.png)
+![Test Output](./assets/cargo-test-output-03.png)
 
 #### 📸 CI/CD Pipeline
 ![CI/CD Pipeline running](./assets/Screenshot-of-cicd-03.png)
 ![CI/CD Pipeline running](./assets/Screenshot-of-cicd-04.png)
+
+#### 📸 Web Analytics 
+![Web Analytics](./assets/web-analytics.png)
 
 ---
 
