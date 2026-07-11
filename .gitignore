@@ -30,3 +30,7 @@ target/
 
 # Local databases/state
 backend/escrows.json
+
+# Graphify
+graphify-out/
+

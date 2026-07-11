@@ -35,6 +35,16 @@ const formatXlmAmount = (val) => {
   return str;
 };
 
+const formatDateTime = (val) => {
+  if (!val) return '';
+  const date = val instanceof Date ? val : new Date(val);
+  if (isNaN(date.getTime())) return '';
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}, ${date.toLocaleTimeString()}`;
+};
+
 const getSpoileredLeaseId = (leaseIdStr) => {
   if (!leaseIdStr) return '';
   const str = String(leaseIdStr);
@@ -1461,17 +1471,6 @@ function App() {
                     <p className="section-desc">Set up a secure escrow contract instance. The tenant will fund it, and release conditions will lock it.</p>
 
                     <form onSubmit={handleCreateEscrow} className="form-container">
-                      <div className="form-group">
-                        <label htmlFor="input-contract-id">SHARED CONTRACT ADDRESS (AUTOMATIC)</label>
-                        <input 
-                          type="text" 
-                          id="input-contract-id" 
-                          className="address-mono" 
-                          value={DEFAULT_CONTRACT_ID} 
-                          readOnly 
-                          style={{ opacity: 0.6, cursor: 'not-allowed', background: 'rgba(255,255,255,0.02)' }}
-                        />
-                      </div>
 
                       <div className="form-group">
                         <label htmlFor="input-title">LEASE TITLE</label>
@@ -1726,10 +1725,6 @@ function App() {
                             <span className="stat-label">LEASE ID</span>
                             <span className="address-mono stat-value">{activeEscrowDetails.leaseId}</span>
                           </div>
-                          <div className="stat-item">
-                            <span className="stat-label">SHARED CONTRACT</span>
-                            <span className="address-mono stat-value text-truncate">{activeEscrowDetails.address}</span>
-                          </div>
                         </div>
 
                         {/* Actions: Unfunded state */}
@@ -1839,7 +1834,7 @@ function App() {
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', textAlign: 'left' }}>
                                       <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#ffb300', letterSpacing: '0.05em' }}>FUNDS DEPOSIT TIME-LOCKED</span>
                                       <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                        This escrow agreement is locked for the lease contract duration. You can propose or release splits starting on <strong>{new Date(activeEscrowDetails.unlockTime * 1000).toLocaleString()}</strong>.
+                                        This escrow agreement is locked for the lease contract duration. You can propose or release splits starting on <strong>{formatDateTime(activeEscrowDetails.unlockTime * 1000)}</strong>.
                                       </span>
                                     </div>
                                   </div>
@@ -1983,7 +1978,7 @@ function App() {
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', textAlign: 'left' }}>
                                         <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#ffb300', letterSpacing: '0.05em' }}>ARBITRATION LOCK ACTIVE</span>
                                         <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                          The dispute cannot be resolved until the contract locks expire on <strong>{new Date(activeEscrowDetails.unlockTime * 1000).toLocaleString()}</strong>.
+                                          The dispute cannot be resolved until the contract locks expire on <strong>{formatDateTime(activeEscrowDetails.unlockTime * 1000)}</strong>.
                                         </span>
                                       </div>
                                     </div>

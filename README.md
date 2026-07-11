@@ -373,7 +373,10 @@ All user feedback was collected via a [Google Form](https://forms.gle/1s3Abvi6QE
     </tr>
     <tr>
       <td>Automatically raise a dispute if the landlord rejects the other party's proposal and submits a counterproposal instead.</td>
-      <td align="center" rowspan="2" valign="middle"><a href="https://github.com/ranitpal77/rental-deposit/commit/7282450c9f5074695d46ed54084be5875fd9db24">7282450</a></td>
+        <td align="center" rowspan="2" valign="middle">
+          <a href="https://github.com/ranitpal77/rental-deposit/commit/7282450c9f5074695d46ed54084be5875fd9db24">7282450</a><br>
+          <a href="https://github.com/ranitpal77/rental-deposit/commit/8d7eabba35f4b4261f6149a4a210a449f898e43a">8d7eabba</a>
+        </td>
     </tr>
     <tr>
       <td>Prevent either party from raising a dispute unless they have first submitted a settlement proposal.</td>
