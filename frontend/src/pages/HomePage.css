@@ -1,0 +1,117 @@
+/* DEPOSHIELD LANDING — INFRASTRUCTURE / DIGITALPLAT AESTHETIC */
+
+/*
+  The landing page is always light regardless of the global dark/light
+  toggle (which still applies to the Workspace / Docs app pages). We scope
+  a full light token set to .homepage-container so every descendant section
+  resolves to the pale infrastructure palette even when body has no
+  .light-theme class.
+*/
+.homepage-container {
+  width: 100%;
+  overflow-x: hidden;
+
+  /* Surfaces */
+  --bg-color: #F1F4F2;          /* pale cool off-white page canvas */
+  --bg-soft: #F6F8F6;           /* slightly lighter band */
+  --surface: #FFFFFF;           /* white cards */
+  --surface-2: #F4F6F5;         /* inset tiles */
+  --ink-panel: #0B0D10;         /* dark navy/black callout cards */
+
+  /* Text */
+  --ink: #0F1115;               /* near-black headings */
+  --ink-soft: #565D66;          /* muted body text */
+  --ink-faint: #8A909C;         /* eyebrows / captions */
+
+  /* Lines */
+  --line: rgba(15, 17, 21, 0.09);
+  --line-strong: rgba(15, 17, 21, 0.16);
+
+  /* Accent (used sparingly, live-status only) */
+  --live: #159A5B;
+  --live-bg: rgba(21, 154, 91, 0.10);
+
+  background-color: var(--bg-color);
+  color: var(--ink);
+}
+
+/* Shared section rhythm */
+.homepage-container section {
+  background-color: var(--bg-color);
+}
+
+/* Generic wrapper width used across new sections */
+.hp-wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+@media (max-width: 600px) {
+  .hp-wrap {
+    padding: 0 1.25rem;
+  }
+}
+
+/*
+  Shared left-aligned section header (eyebrow + title + sub).
+  Scoped under .homepage-container so it overrides the global .section-title
+  used by the Workspace/Docs pages without affecting them.
+*/
+.homepage-container .section-head {
+  max-width: 44rem;
+  margin-bottom: 3.25rem;
+}
+
+.homepage-container .section-eyebrow {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 1rem;
+}
+
+.homepage-container .section-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 3.4vw, 2.35rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin: 0;
+  text-transform: none;
+}
+
+.homepage-container .section-sub {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  margin: 1rem 0 0 0;
+}
+
+@media (max-width: 600px) {
+  .homepage-container .section-head {
+    margin-bottom: 2.5rem;
+  }
+}
+
+.landing-bottom-cta {
+  display: flex;
+  justify-content: center;
+  gap: 1.25rem;
+  padding: 6.5rem 2rem;
+  background-color: var(--bg-color);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.landing-bottom-cta .cta-btn {
+  font-size: 0.9rem;
+  padding: 0.8rem 1.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+

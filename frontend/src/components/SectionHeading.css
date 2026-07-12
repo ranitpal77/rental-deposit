@@ -1,0 +1,80 @@
+/* REDESIGNED SECTION HEADING - EYEBROW LABEL INFRASTRUCTURE PATTERN */
+
+.section-header-block {
+  margin-bottom: 3.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.section-header-block.centered {
+  align-items: center;
+  text-align: center;
+}
+
+.section-badge-pill {
+  display: inline-block;
+  align-self: flex-start;
+  padding: 0;
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #111318; /* Confident accent near-black */
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  margin-bottom: 0.75rem;
+}
+
+body.light-theme .section-badge-pill {
+  color: #5B6270; /* Muted accent gray */
+}
+
+.section-header-block.centered .section-badge-pill {
+  align-self: center;
+}
+
+.section-title-grad {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 2.6rem);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: #111318;
+  margin: 0;
+  background: none;
+  -webkit-text-fill-color: initial;
+}
+
+body.light-theme .section-title-grad {
+  color: #111318;
+}
+
+.section-subtitle-text {
+  font-size: clamp(0.95rem, 1.8vw, 1.05rem);
+  color: #5B6270;
+  max-width: 650px;
+  line-height: 1.6;
+  margin: 0.5rem 0 0 0;
+}
+
+body.light-theme .section-subtitle-text {
+  color: #5B6270;
+}
+
+/* Responsiveness */
+@media (max-width: 768px) {
+  .section-header-block {
+    margin-bottom: 2.5rem;
+  }
+  
+  .section-title-grad {
+    font-size: 1.85rem;
+  }
+  
+  .section-subtitle-text {
+    font-size: 0.95rem;
+  }
+}

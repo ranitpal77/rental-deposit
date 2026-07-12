@@ -1,0 +1,54 @@
+/* TRUST STRIP — "Built on" partner wordmarks */
+
+.trust-section {
+  padding: 4rem 0;
+  border-top: none;
+}
+
+.trust-eyebrow {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 0.85rem;
+}
+
+.trust-note {
+  font-size: 0.98rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  max-width: 34rem;
+  margin: 0 0 2.25rem 0;
+}
+
+.trust-logos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2.75rem;
+}
+
+.trust-logo {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  opacity: 0.55;
+  transition: opacity var(--transition-fast);
+}
+
+.trust-logo:hover {
+  opacity: 0.9;
+}
+
+@media (max-width: 600px) {
+  .trust-logos {
+    gap: 1.5rem 2rem;
+  }
+  .trust-logo {
+    font-size: 1.15rem;
+  }
+}

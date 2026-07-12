@@ -1,0 +1,77 @@
+/* Centering and stacking the workspace bento grid */
+.workspace-grid {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1.5rem !important;
+  max-width: 850px !important;
+  margin: 0 auto !important;
+  width: 100% !important;
+  align-items: stretch !important;
+}
+
+.workspace-grid .bento-card-workspace, 
+.workspace-grid .bento-card-wallet {
+  grid-column: span 1 !important;
+  grid-row: auto !important;
+  width: 100% !important;
+  height: auto !important;
+}
+
+/* Dashboard grid stays as side-by-side columns */
+.dashboard-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.5fr) !important;
+  grid-auto-flow: dense !important;
+  gap: 1.5rem !important;
+  margin-top: 2rem !important;
+  align-items: start !important;
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.dashboard-grid .bento-card-metrics {
+  grid-column: span 1 !important;
+  grid-row: span 3 !important;
+}
+
+.dashboard-grid .bento-card-dashboard {
+  grid-column: span 2 !important;
+  grid-row: span 3 !important;
+}
+
+.dashboard-grid .bento-card-resolved {
+  grid-column: span 3 !important;
+  grid-row: span 3 !important;
+  margin-top: 1.5rem !important;
+}
+
+@media (max-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) !important;
+  }
+  
+  .dashboard-grid .bento-card-metrics {
+    grid-column: span 1 !important;
+  }
+
+  .dashboard-grid .bento-card-dashboard {
+    grid-column: span 1 !important;
+  }
+
+  .dashboard-grid .bento-card-resolved {
+    grid-column: span 2 !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .dashboard-grid .bento-card-metrics,
+  .dashboard-grid .bento-card-dashboard,
+  .dashboard-grid .bento-card-resolved {
+    grid-column: span 1 !important;
+    margin-top: 0 !important;
+  }
+}

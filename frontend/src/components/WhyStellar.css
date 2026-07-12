@@ -1,0 +1,163 @@
+.why-stellar-section {
+  position: relative;
+  padding: 8rem 0;
+  background-color: var(--bg-color);
+  border-top: none;
+}
+
+.why-stellar-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 4rem;
+  align-items: center;
+}
+
+/* Left column styling */
+.why-stellar-eyebrow {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 1.25rem;
+}
+
+.why-stellar-title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  margin: 0 0 1.5rem 0;
+}
+
+.why-stellar-desc {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  margin-bottom: 2rem;
+}
+
+/* Checklist */
+.why-stellar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.why-stellar-item {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.why-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--live-bg);
+  color: var(--live);
+  flex-shrink: 0;
+  margin-top: 0.2rem;
+}
+
+.why-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  text-align: left;
+}
+
+.why-item-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.why-item-text {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+/* Right column styling: Code Editor */
+.why-code-editor {
+  background: var(--ink-panel); /* Dark Navy / Black color from landing page! */
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.why-code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.mac-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.mac-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.mac-dot.close { background-color: #FF5F56; }
+.mac-dot.minimize { background-color: #FFBD2E; }
+.mac-dot.expand { background-color: #27C93F; }
+
+.editor-tab {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--ink-faint);
+}
+
+.why-code-body {
+  display: flex;
+  padding: 1.5rem 1.25rem;
+  overflow: hidden;
+  gap: 1rem;
+}
+
+.line-numbers {
+  display: flex;
+  flex-direction: column;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.15);
+  user-select: none;
+  line-height: 1.6;
+}
+
+.code-content {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: #D1D2D6;
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@media (max-width: 900px) {
+  .why-stellar-grid {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+}

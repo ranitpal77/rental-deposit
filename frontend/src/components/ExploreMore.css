@@ -1,0 +1,168 @@
+/* CORE PROTOCOL PRINCIPLES — nested layout styling */
+
+.explore-section {
+  padding: 6.5rem 0;
+  border-top: none;
+}
+
+.principle-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ---- White explainer card ---- */
+.principle-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 1.25rem; /* Framer padding */
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.01);
+}
+
+.principle-card-grid {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: 2rem;
+  align-items: stretch;
+}
+
+.principle-card-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1.5rem 1rem 1.5rem 1.5rem;
+}
+
+.principle-tag {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 1rem;
+}
+
+.principle-heading {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  margin: 0 0 1rem 0;
+}
+
+.principle-body {
+  font-size: 0.95rem;
+  line-height: 1.65;
+  color: var(--ink-soft);
+  margin: 0 0 2rem 0;
+}
+
+.principle-table {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.principle-tr {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 1.15rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.principle-tr:last-child {
+  border-bottom: none;
+}
+
+.principle-k {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.principle-v {
+  font-size: 0.82rem;
+  color: var(--ink-faint);
+}
+
+/* ---- Dark navy callout ---- */
+.principle-dark {
+  background: var(--ink-panel);
+  border-radius: 18px;
+  padding: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  min-height: 300px;
+}
+
+.principle-dark-eyebrow {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 1rem;
+}
+
+.principle-dark-text {
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 2vw, 1.55rem);
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+  color: #FFFFFF;
+  margin: 0;
+}
+
+.principle-dark-btn {
+  background: #FFFFFF;
+  color: var(--ink);
+  border: none;
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.7rem 1.4rem;
+  border-radius: 100px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.principle-dark-btn:hover {
+  background: #e9ebe9;
+  transform: translateY(-1px);
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 900px) {
+  .explore-section {
+    padding: 5rem 0;
+  }
+  
+  .principle-card-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .principle-card-info {
+    padding: 0.5rem;
+  }
+  
+  .principle-dark {
+    min-height: auto;
+    padding: 2rem;
+    gap: 1.5rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .principle-card {
+    padding: 1rem;
+  }
+}

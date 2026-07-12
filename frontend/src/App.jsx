@@ -13,6 +13,11 @@ import {
 import { Server } from '@stellar/stellar-sdk/rpc';
 import { Buffer } from 'buffer';
 
+import Navbar from './components/Navbar';
+import HomePage from './pages/HomePage';
+import DocsPage from './pages/DocsPage';
+import Workspace from './pages/Workspace';
+
 // Polyfill Buffer for Webpack 5 in React environment
 if (typeof window !== 'undefined') {
   window.Buffer = window.Buffer || Buffer;
@@ -110,11 +115,10 @@ const saveLocalEscrows = (escrows) => {
 };
 
 function App() {
-  // Navigation & Theme State
-  const [activePage, setActivePage] = useState('workspace');
+  // Path Routing State
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [activeTab, setActiveTab] = useState('create');
-  const [theme, setTheme] = useState('dark');
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [theme, setTheme] = useState('light');
 
   // Wallet State
   const [userAddress, setUserAddress] = useState(null);
@@ -124,7 +128,6 @@ function App() {
   const [searchLeaseId, setSearchLeaseId] = useState('');
   const [activeEscrowDetails, setActiveEscrowDetails] = useState(null);
   const [errorDetails, setErrorDetails] = useState(null);
-  const [disputeReasonInput, setDisputeReasonInput] = useState('');
   const [landlordDisputeReason, setLandlordDisputeReason] = useState('');
   const [showDisputeReasonError, setShowDisputeReasonError] = useState(false);
 
@@ -148,6 +151,21 @@ function App() {
   const [unlockDateTime, setUnlockDateTime] = useState('');
   const [lockDurationSeconds, setLockDurationSeconds] = useState(30); // Default to 30s
   const [quickDurationIndex, setQuickDurationIndex] = useState(0); // Index 0 (30s)
+
+  // SPA Navigator
+  const navigate = (path) => {
+    window.history.pushState({}, '', path);
+    setCurrentPath(path);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Synchronizers
   const syncFromDuration = useCallback((seconds) => {
@@ -213,7 +231,6 @@ function App() {
   const [isCreating, setIsCreating] = useState(false);
   const [isFunding, setIsFunding] = useState(false);
   const [isProposing, setIsProposing] = useState(false);
-  const [isRaisingDispute, setIsRaisingDispute] = useState(false);
   const [isResolving, setIsResolving] = useState(false);
 
   // Dashboard & Metrics State
@@ -222,7 +239,8 @@ function App() {
     tvl: 0,
     activeCount: 0,
     resolvedCount: 0,
-    disputeCount: 0
+    disputedCount: 0,
+    resolvedVol: 0
   });
 
   // Toast notifications State
@@ -239,30 +257,24 @@ function App() {
 
   // Theme Sync on Mount
   useEffect(() => {
-    const currentTheme = localStorage.getItem('deposhield_theme') || 'dark';
-    setTheme(currentTheme);
-    if (currentTheme === 'light') {
-      document.body.classList.add('light-theme');
-    } else {
-      document.body.classList.remove('light-theme');
-    }
+    localStorage.setItem('deposhield_theme', 'light');
+    setTheme('light');
+    document.body.classList.add('light-theme');
   }, []);
 
   const handleToggleTheme = () => {
-    const isLight = document.body.classList.toggle('light-theme');
-    const newTheme = isLight ? 'light' : 'dark';
-    localStorage.setItem('deposhield_theme', newTheme);
-    setTheme(newTheme);
+    // Light mode only
   };
 
   // Wallet Connection helper
   const updateWalletBalance = useCallback(async (address) => {
-    if (!address) {
+    const addrStr = (address && typeof address === 'object') ? address.address : address;
+    if (!addrStr || typeof addrStr !== 'string') {
       setWalletBalance('-- XLM');
       return;
     }
     try {
-      const res = await fetch(`https://horizon-testnet.stellar.org/accounts/${address}`);
+      const res = await fetch(`https://horizon-testnet.stellar.org/accounts/${addrStr}`);
       if (res.status === 404) {
         setWalletBalance('0.00 XLM');
         return;
@@ -276,8 +288,8 @@ function App() {
         setWalletBalance('0.00 XLM');
       }
     } catch (err) {
-      console.error('Failed to fetch wallet balance:', err);
-      setWalletBalance('Error loading');
+      console.warn('Failed to load wallet balance:', err);
+      setWalletBalance('-- XLM');
     }
   }, []);
 
@@ -292,18 +304,27 @@ function App() {
       if (accessResult && accessResult.error) {
         throw new Error(accessResult.error);
       }
-      if (accessResult && accessResult.address) {
-        const address = accessResult.address;
+      
+      let address = null;
+      if (typeof accessResult === 'string') {
+        address = accessResult;
+      } else if (accessResult && accessResult.address) {
+        address = accessResult.address;
+      }
+
+      if (address) {
         setUserAddress(address);
         localStorage.setItem('deposhield_connected_address', address);
         showToast('Wallet connected successfully!', 'success');
         updateWalletBalance(address);
+      } else {
+        throw new Error('No address returned from Freighter');
       }
     } catch (err) {
       console.error('Wallet connection rejected:', err);
       showToast('Failed to connect to Freighter wallet.', 'error');
     }
-  }, [showToast, updateWalletBalance]);
+  }, [updateWalletBalance, showToast]);
 
   const handleDisconnectWallet = useCallback(() => {
     setUserAddress(null);
@@ -316,8 +337,21 @@ function App() {
   useEffect(() => {
     const storedAddress = localStorage.getItem('deposhield_connected_address');
     if (storedAddress) {
-      setUserAddress(storedAddress);
-      updateWalletBalance(storedAddress);
+      // In case storedAddress was previously saved as an object string or contains invalid formatting
+      let cleanAddress = storedAddress;
+      try {
+        if (storedAddress.startsWith('{')) {
+          const parsed = JSON.parse(storedAddress);
+          cleanAddress = parsed.address || storedAddress;
+        }
+      } catch (e) {}
+
+      if (cleanAddress && cleanAddress !== '[object Object]') {
+        setUserAddress(cleanAddress);
+        updateWalletBalance(cleanAddress);
+      } else {
+        localStorage.removeItem('deposhield_connected_address');
+      }
     }
   }, [updateWalletBalance]);
 
@@ -351,131 +385,119 @@ function App() {
             }
           ]
         });
-        
+
         const rawEvents = eventsResponse.events || [];
         rawEvents.forEach(evt => {
           const actualTxHash = evt.txHash || evt.transactionHash;
           if (!evt.topic || !actualTxHash) return;
           const eventName = evt.topic[0] ? scValToNative(evt.topic[0]) : '';
           if (!eventName) return;
-          
-          let matchedLeaseId = null;
+
+          let leaseIdVal = null;
           try {
             if (eventName === 'init') {
-              const spoileredId = scValToNative(evt.value);
-              const match = allEscrows.find(e => getSpoileredLeaseId(e.leaseId) === spoileredId);
-              if (match) matchedLeaseId = match.leaseId;
+              // value contains spoilered ID
             } else if (evt.topic[1]) {
-              const rawIdVal = scValToNative(evt.topic[1]);
-              const match = allEscrows.find(e => fnv1a64(e.leaseId).toString() === rawIdVal.toString());
-              if (match) matchedLeaseId = match.leaseId;
+              leaseIdVal = scValToNative(evt.topic[1]).toString();
             }
           } catch (e) {}
-          
-          if (matchedLeaseId) {
-            if (!eventTxMap[matchedLeaseId]) {
-              eventTxMap[matchedLeaseId] = [];
-            }
-            
-            const matchedEscrow = allEscrows.find(e => e.leaseId === matchedLeaseId);
-            let callerRole = '';
-            if (eventName === 'init') {
-              callerRole = 'Landlord';
-            } else if (eventName === 'funded') {
-              callerRole = 'Tenant';
-            } else if (eventName === 'proposed' || eventName === 'disputed') {
-              try {
-                const callerAddr = scValToNative(evt.topic[2]);
-                if (matchedEscrow) {
-                  callerRole = (callerAddr === matchedEscrow.tenant) ? 'Tenant' : 'Landlord';
-                }
-              } catch (e) {}
-            } else if (eventName === 'released') {
-              try {
-                const typeSym = scValToNative(evt.topic[2]);
-                if (typeSym === 'dispute') {
-                  callerRole = 'Arbitrator';
-                }
-              } catch (e) {}
-            }
-            
-            eventTxMap[matchedLeaseId].push({
+
+          if (leaseIdVal) {
+            if (!eventTxMap[leaseIdVal]) eventTxMap[leaseIdVal] = [];
+            eventTxMap[leaseIdVal].push({
               eventName,
               txHash: actualTxHash,
-              timestamp: evt.ledgerClosedAt || new Date().toISOString(),
-              callerRole
+              value: evt.value,
+              topic: evt.topic,
+              ledgerClosedAt: evt.ledgerClosedAt
             });
           }
         });
-      } catch (evtErr) {
-        console.warn('Failed to fetch events from Soroban RPC:', evtErr);
+      } catch (e) {
+        console.warn('Failed to fetch transaction events from ledger:', e);
       }
-      
-      const escrows = (userAddress 
-        ? allEscrows.filter(e => e.tenant === userAddress || e.landlord === userAddress || e.arbitrator === userAddress)
-        : []).map(escrow => {
-          const leaseEvents = eventTxMap[escrow.leaseId] || [];
-          // Sort chronologically
-          leaseEvents.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
-          // Reconstruct mutual release caller role if empty
-          leaseEvents.forEach((le, idx) => {
-            if (le.eventName === 'released' && !le.callerRole) {
-              const firstProposer = leaseEvents.find(e => e.eventName === 'proposed');
-              if (firstProposer) {
-                le.callerRole = firstProposer.callerRole === 'Tenant' ? 'Landlord' : 'Tenant';
-              } else {
-                le.callerRole = 'Tenant'; // fallback
-              }
+      const escrows = allEscrows.map(escrow => {
+        const key = fnv1a64(escrow.leaseId).toString();
+        const leaseEvents = eventTxMap[key] || [];
+
+        // Map events back to human readable logs
+        const formattedEvents = leaseEvents.map(le => {
+          let eventText = '';
+          let callerRole = '';
+          const leName = le.eventName;
+
+          if (leName === 'funded') {
+            eventText = 'Escrow Funded';
+            callerRole = 'Tenant';
+          } else if (leName === 'proposed') {
+            try {
+              const val = scValToNative(le.value);
+              const tAmt = formatXlmAmount(Number(val[0]) / 10_000_000);
+              const lAmt = formatXlmAmount(Number(val[1]) / 10_000_000);
+              const callerAddr = scValToNative(le.topic[2]);
+              callerRole = (callerAddr === escrow.tenant) ? 'Tenant' : 'Landlord';
+              eventText = `${callerRole} proposed release split: Tenant: ${tAmt} XLM, Landlord: ${lAmt} XLM`;
+            } catch (e) {
+              eventText = 'Release split proposal submitted';
             }
-          });
- 
-          if (escrow.history) {
-            let consumedIndices = new Set();
-            const updatedHistory = escrow.history.map(hist => {
-              if (hist.txHash) return hist;
-              
-              let matchedHash = null;
-              let matchedRole = null;
-              const eventStr = hist.event.toLowerCase();
-              
-              for (let i = 0; i < leaseEvents.length; i++) {
-                if (consumedIndices.has(i)) continue;
-                
-                const le = leaseEvents[i];
-                const leName = le.eventName.toLowerCase();
-                let isMatch = false;
-                
-                if ((eventStr.includes('created') || eventStr.includes('initialized')) && leName === 'init') {
-                  isMatch = true;
-                } else if (eventStr.includes('funded') && leName === 'funded') {
-                  isMatch = true;
-                } else if (eventStr.includes('proposed') && leName === 'proposed') {
-                  isMatch = true;
-                } else if ((eventStr.includes('dispute declared') || eventStr.includes('disputed') || eventStr.includes('automatically transitioned to disputed') || eventStr.includes('splits conflict')) && leName === 'disputed') {
-                  isMatch = true;
-                } else if ((eventStr.includes('released') || eventStr.includes('dispute resolved')) && leName === 'released') {
-                  isMatch = true;
-                }
-                
-                if (isMatch) {
-                  matchedHash = le.txHash;
-                  matchedRole = le.callerRole;
-                  consumedIndices.add(i);
-                  break;
-                }
+          } else if (leName === 'disputed') {
+            try {
+              const reasonStr = scValToNative(le.value);
+              const callerAddr = scValToNative(le.topic[2]);
+              callerRole = (callerAddr === escrow.tenant) ? 'Tenant' : 'Landlord';
+              eventText = `Dispute declared by ${callerRole}. Reason: "${reasonStr}"`;
+            } catch (e) {
+              eventText = 'Dispute declared';
+            }
+          } else if (leName === 'released') {
+            try {
+              const val = scValToNative(le.value);
+              const tAmt = formatXlmAmount(Number(val[0]) / 10_000_000);
+              const lAmt = formatXlmAmount(Number(val[1]) / 10_000_000);
+              const typeSym = scValToNative(le.topic[2]);
+              if (typeSym === 'dispute') {
+                eventText = `Dispute resolved by Arbitrator! (Tenant: ${tAmt} XLM, Landlord: ${lAmt} XLM)`;
+                callerRole = 'Arbitrator';
+              } else {
+                eventText = `Escrow Released! (Tenant: ${tAmt} XLM, Landlord: ${lAmt} XLM)`;
               }
-              
-              return { 
-                ...hist, 
-                txHash: matchedHash || hist.txHash,
-                callerRole: matchedRole || hist.callerRole
-              };
-            });
-            return { ...escrow, history: updatedHistory };
+            } catch (e) {
+              eventText = 'Escrow Released';
+            }
           }
-          return escrow;
+
+          return {
+            timestamp: le.ledgerClosedAt || new Date().toISOString(),
+            event: eventText,
+            txHash: le.txHash,
+            callerRole
+          };
         });
+
+        // Merge existing offline history and new on-chain synced history
+        const mergedHistory = [...(escrow.history || [])];
+        formattedEvents.forEach(fe => {
+          if (!mergedHistory.some(mh => mh.txHash === fe.txHash)) {
+            mergedHistory.push(fe);
+          }
+        });
+        mergedHistory.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+        // Reconstruct mutual release caller role if empty
+        mergedHistory.forEach((le, idx) => {
+          if (le.eventName === 'released' && !le.callerRole) {
+            const firstProposer = mergedHistory.find(e => e.eventName === 'proposed');
+            if (firstProposer) {
+              le.callerRole = firstProposer.callerRole === 'Tenant' ? 'Landlord' : 'Tenant';
+            } else {
+              le.callerRole = 'Tenant'; // fallback
+            }
+          }
+        });
+
+        return { ...escrow, history: mergedHistory };
+      });
       
       setDashboardEscrows(escrows);
 
@@ -483,7 +505,8 @@ function App() {
       let tvl = 0;
       let activeCount = 0;
       let resolvedCount = 0;
-      let disputeCount = 0;
+      let disputedCount = 0;
+      let resolvedVol = 0;
 
       escrows.forEach(escrow => {
         const status = String(escrow.status || '').toLowerCase();
@@ -493,10 +516,11 @@ function App() {
           activeCount++;
           tvl += amount;
         } else if (status === 'disputed' || status === '2') {
-          disputeCount++;
+          disputedCount++;
           tvl += amount;
         } else if (status === 'released' || status === 'released (disputed)' || status === 'resolved' || status === '3') {
           resolvedCount++;
+          resolvedVol += amount;
         } else if (status === 'created' || status === '0') {
           activeCount++;
         }
@@ -506,12 +530,13 @@ function App() {
         tvl,
         activeCount,
         resolvedCount,
-        disputeCount
+        disputedCount,
+        resolvedVol
       });
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     }
-  }, [userAddress]);
+  }, []);
 
   useEffect(() => {
     loadDashboardEscrows();
@@ -662,7 +687,7 @@ function App() {
       const contractId = DEFAULT_CONTRACT_ID;
 
       // Parallel simulated RPC calls
-      const [tenantAddr, landlordAddr, arbitratorAddr, amountValRaw, isFunded, statusRaw, unlockTimeRaw] = await Promise.all([
+      const [tenantAddr, landlordAddr, arbitratorAddr, amountValRaw, isFunded, statusRaw, unlockTimeRawSc] = await Promise.all([
         simulateCall(contractId, 'get_tenant', [leaseIdVal]),
         simulateCall(contractId, 'get_landlord', [leaseIdVal]),
         simulateCall(contractId, 'get_arbitrator', [leaseIdVal]),
@@ -674,7 +699,7 @@ function App() {
 
       const amountVal = Number(amountValRaw) / 10_000_000;
       const status = Number(statusRaw); // 0=Created, 1=Active, 2=Disputed, 3=Released
-      const unlockTime = Number(unlockTimeRaw);
+      const unlockTime = Number(unlockTimeRawSc);
 
       // Fetch proposals
       let tenantProposal = null;
@@ -1167,60 +1192,6 @@ function App() {
     }
   };
 
-  // Dispute Handler
-  const handleRaiseDispute = async () => {
-    if (!activeEscrowDetails) return;
-    const leaseIdStr = activeEscrowDetails.leaseId;
-    const reason = disputeReasonInput.trim() || 'No dispute reason provided';
-
-    setIsRaisingDispute(true);
-    try {
-      const leaseId = fnv1a64(leaseIdStr);
-      const args = [
-        nativeToScVal(leaseId, { type: 'u64' }),
-        nativeToScVal(userAddress, { type: 'address' }),
-        nativeToScVal(reason, { type: 'string' })
-      ];
-
-      const txResult = await executeTx(activeEscrowDetails.address, 'dispute', args);
-      const txHash = txResult.hash;
-
-      const escrows = getLocalEscrows();
-      const escrow = escrows.find(e => e.leaseId === leaseIdStr);
-      if (escrow) {
-        const callerRole = userAddress === escrow.tenant ? 'Tenant' : 'Landlord';
-        escrow.status = 'Disputed';
-        escrow.history.push({ 
-          timestamp: new Date().toISOString(), 
-          event: `Dispute declared by ${callerRole}. Reason: "${reason}"`,
-          txHash,
-          callerRole
-        });
-        saveLocalEscrows(escrows);
-      }
-
-      try {
-        await fetch(`${BACKEND_URL}/api/escrows/${leaseIdStr}/dispute`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ caller: userAddress, reason, txHash })
-        });
-      } catch (err) {
-        console.warn('Backend sync failed:', err);
-      }
-
-      showToast('Dispute successfully declared on-chain. Arbitrator has been notified.', 'success', txHash);
-      setDisputeReasonInput('');
-      await handleLoadEscrow(leaseIdStr);
-      await loadDashboardEscrows();
-    } catch (err) {
-      console.error('Dispute failed:', err);
-      showToast(`Dispute transaction failed: ${getErrorMessage(err)}`, 'error');
-    } finally {
-      setIsRaisingDispute(false);
-    }
-  };
-
   // Resolve Dispute (Arbitrator Action)
   const handleResolveDispute = async () => {
     if (!activeEscrowDetails) return;
@@ -1275,7 +1246,6 @@ function App() {
     }
   };
 
-  // Status Badge Class parser
   const getStatusBadgeClass = (statusStr) => {
     switch (String(statusStr || '').toLowerCase()) {
       case 'active':
@@ -1307,1163 +1277,149 @@ function App() {
     return s.toUpperCase();
   };
 
+  // Filter lists for dashboard view
+  const myEscrows = dashboardEscrows.filter(e => {
+    const status = String(e.status || '').toLowerCase();
+    return status !== 'released' && status !== 'released (disputed)' && status !== 'resolved' && status !== '3';
+  });
+
+  const historicalEscrows = dashboardEscrows.filter(e => {
+    const statusLower = String(e.status).toLowerCase();
+    const isResolved = statusLower === 'released' || statusLower === 'released (disputed)' || statusLower === 'resolved' || statusLower === '3';
+    if (!isResolved) return false;
+    
+    if (e.tenant === userAddress || e.landlord === userAddress) return true;
+    if (e.arbitrator === userAddress) {
+      const isDisputed = statusLower.includes('disput') || statusLower === 'resolved' || statusLower === '2' || statusLower === '3';
+      const hasDisputeEvent = e.history && e.history.some(h => 
+        String(h.event).toLowerCase().includes('dispute')
+      );
+      return isDisputed || hasDisputeEvent;
+    }
+    return false;
+  });
+
   return (
     <>
       {/* Background Grid Texture */}
       <div className="grid-background"></div>
 
-      {/* Floating Theme Toggle Button */}
-      <button onClick={handleToggleTheme} className="theme-toggle-btn" aria-label="Toggle Theme">
-        {theme === 'dark' ? (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="4" />
-            <path d="M12 2v2" />
-            <path d="M12 20v2" />
-            <path d="m4.93 4.93 1.41 1.41" />
-            <path d="m17.66 17.66 1.41 1.41" />
-            <path d="M2 12h2" />
-            <path d="M20 12h2" />
-            <path d="m6.34 17.66-1.41 1.41" />
-            <path d="m19.07 4.93-1.41 1.41" />
-          </svg>
-        ) : (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-          </svg>
-        )}
-      </button>
 
-      {/* Floating Nav Bar */}
-      <nav className="navbar">
-        <div className="navbar-brand">
-          <span className="logo-text">DEPOSHIELD</span>
-          <span className="tagline">STELLAR ESCROW</span>
-        </div>
-        <div className="navbar-menu">
-          <button 
-            onClick={() => { setActivePage('workspace'); setIsMobileMenuOpen(false); }} 
-            className={`nav-link ${activePage === 'workspace' ? 'active' : ''}`}
-          >
-            WORKSPACE
-          </button>
-          <button 
-            onClick={() => { setActivePage('dashboard'); setIsMobileMenuOpen(false); }} 
-            className={`nav-link ${activePage === 'dashboard' ? 'active' : ''}`}
-          >
-            DASHBOARD
-          </button>
-          <button 
-            onClick={() => { setActivePage('docs'); setIsMobileMenuOpen(false); }} 
-            className={`nav-link ${activePage === 'docs' ? 'active' : ''}`}
-          >
-            DOCUMENTATION
-          </button>
-        </div>
-        <div className="navbar-actions">
-          {!userAddress ? (
-            <button onClick={handleConnectWallet} className="btn btn-primary pill-btn">CONNECT WALLET</button>
-          ) : (
-            <div className="wallet-info">
-              <span className="address-mono">{`${userAddress.slice(0, 6)}...${userAddress.slice(-6)}`}</span>
-              <button onClick={handleDisconnectWallet} className="btn btn-secondary btn-icon-only" aria-label="Disconnect">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                  <polyline points="16 17 21 12 16 7"></polyline>
-                  <line x1="21" y1="12" x2="9" y2="12"></line>
-                </svg>
-              </button>
-            </div>
-          )}
-          <button 
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
-            className={`hamburger-btn ${isMobileMenuOpen ? 'open' : ''}`} 
-            aria-label="Toggle menu"
-          >
-            <span></span>
-            <span></span>
-            <span></span>
-          </button>
-        </div>
-      </nav>
 
-      {/* Mobile Dropdown Menu */}
-      <div className={`mobile-menu ${isMobileMenuOpen ? 'open' : ''}`}>
-        <button 
-          onClick={() => { setActivePage('workspace'); setIsMobileMenuOpen(false); }} 
-          className={`mobile-nav-link ${activePage === 'workspace' ? 'active' : ''}`}
-        >
-          WORKSPACE
-        </button>
-        <button 
-          onClick={() => { setActivePage('dashboard'); setIsMobileMenuOpen(false); }} 
-          className={`mobile-nav-link ${activePage === 'dashboard' ? 'active' : ''}`}
-        >
-          DASHBOARD
-        </button>
-        <button 
-          onClick={() => { setActivePage('docs'); setIsMobileMenuOpen(false); }} 
-          className={`mobile-nav-link ${activePage === 'docs' ? 'active' : ''}`}
-        >
-          DOCUMENTATION
-        </button>
-      </div>
+      {/* Header Sticky Navigation */}
+      <Navbar 
+        currentPath={currentPath} 
+        onNavigate={navigate}
+        userAddress={userAddress}
+        handleConnectWallet={handleConnectWallet}
+        handleDisconnectWallet={handleDisconnectWallet}
+      />
 
-      <main className="container">
-        {/* Hero Section */}
-        <header className="hero">
-          <div className="hero-content">
-            <span className="badge">SOROBAN SMART CONTRACT PROTOCOL</span>
-            <h1 className="hero-title">TRUSTLESS SECURITY DEPOSITS</h1>
-            <p className="hero-subtitle">
-              Eliminate landlord-tenant friction. Lock rental deposits on-chain with neutral, automated rules. Release funds
-              mutually or resolve disputes instantly via decentralized arbitration.
-            </p>
-          </div>
-        </header>
-
-        {/* Page 1: Workspace Section */}
-        {activePage === 'workspace' && (
-          <div id="page-workspace" className="page-section">
-            <div className={`workspace-grid bento-grid ${userAddress ? 'wallet-connected' : ''}`}>
-              
-              {/* Wallet Status Card (hidden when not connected) */}
-              {userAddress && (
-                <div className="bento-card bento-card-wallet">
-                  <h2 className="section-title">CONNECTED WALLET STATUS</h2>
-                  <p className="section-desc">Details and real-time balance of the active Freighter wallet account.</p>
-
-                  <div className="escrow-stats" style={{ marginBottom: 0 }}>
-                    <div className="stat-item">
-                      <span className="stat-label">ACCOUNT ADDRESS</span>
-                      <span className="address-mono stat-value text-truncate">
-                        {userAddress ? `${userAddress.slice(0, 8)}...${userAddress.slice(-8)}` : '--'}
-                      </span>
-                    </div>
-                    <div className="stat-item">
-                      <span className="stat-label">NATIVE XLM BALANCE</span>
-                      <span className="address-mono stat-value">{walletBalance}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Main Workspace Card */}
-              <div className="bento-card bento-card-workspace">
-                <div className="tab-control">
-                  <button 
-                    onClick={() => setActiveTab('create')} 
-                    className={`tab-btn ${activeTab === 'create' ? 'active' : ''}`}
-                  >
-                    CREATE ESCROW
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab('manage')} 
-                    className={`tab-btn ${activeTab === 'manage' ? 'active' : ''}`}
-                  >
-                    MANAGE ESCROW
-                  </button>
-                </div>
-
-                {/* Create Escrow Panel */}
-                {activeTab === 'create' && (
-                  <div className="workspace-panel">
-                    <h2 className="section-title">INITIALIZE NEW LEASE</h2>
-                    <p className="section-desc">Set up a secure escrow contract instance. The tenant will fund it, and release conditions will lock it.</p>
-
-                    <form onSubmit={handleCreateEscrow} className="form-container">
-
-                      <div className="form-group">
-                        <label htmlFor="input-title">LEASE TITLE</label>
-                        <input 
-                          type="text" 
-                          id="input-title" 
-                          placeholder="e.g., APARTMENT 4B - GREENVIEW HEIGHTS" 
-                          required
-                          value={createFormData.title}
-                          onChange={(e) => setCreateFormData({ ...createFormData, title: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="form-group">
-                        <label htmlFor="input-desc">LEASE DESCRIPTION</label>
-                        <textarea 
-                          id="input-desc" 
-                          placeholder="Detail move-in dates, terms, or conditions..." 
-                          rows="6"
-                          value={createFormData.desc}
-                          onChange={(e) => setCreateFormData({ ...createFormData, desc: e.target.value })}
-                        />
-                      </div>
-
-                      <div className="form-grid form-grid-stack">
-                        <div className="form-group">
-                          <label htmlFor="input-tenant">TENANT PUBLIC KEY</label>
-                          <input 
-                            type="text" 
-                            id="input-tenant" 
-                            className="address-mono" 
-                            placeholder="GD..." 
-                            required
-                            value={createFormData.tenant}
-                            onChange={(e) => setCreateFormData({ ...createFormData, tenant: e.target.value })}
-                          />
-                        </div>
-
-                        <div className="form-group">
-                          <label htmlFor="input-arbitrator">ARBITRATOR PUBLIC KEY</label>
-                          <input 
-                            type="text" 
-                            id="input-arbitrator" 
-                            className="address-mono" 
-                            placeholder="GA..." 
-                            required
-                            value={createFormData.arbitrator}
-                            onChange={(e) => setCreateFormData({ ...createFormData, arbitrator: e.target.value })}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="form-grid">
-                        <div className="form-group">
-                          <label htmlFor="input-amount">DEPOSIT AMOUNT (XLM)</label>
-                          <input 
-                            type="number" 
-                            id="input-amount" 
-                            placeholder="e.g., 500" 
-                            required 
-                            min="1"
-                            value={createFormData.amount}
-                            onChange={(e) => setCreateFormData({ ...createFormData, amount: e.target.value })}
-                          />
-                        </div>
-
-                        <div className="form-group">
-                          <label htmlFor="select-token">TOKEN ASSET</label>
-                          <select 
-                            id="select-token"
-                            value={createFormData.token}
-                            onChange={(e) => setCreateFormData({ ...createFormData, token: e.target.value })}
-                          >
-                            <option value="native">XLM (Native Stellar)</option>
-                            <option value="usdc">USDC (Stellar Anchor)</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Escrow Lock Duration Options */}
-                      <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem', padding: '1.25rem', border: '1px solid var(--border-color)', borderRadius: '16px', background: 'rgba(255,255,255,0.01)' }}>
-                        <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-primary)', marginBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem' }}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-primary)' }}>
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                          </svg>
-                          SECURITY DEPOSIT TIME-LOCK CONFIGURATION
-                        </h4>
-
-                        <div className="form-grid" style={{ marginBottom: '1.25rem' }}>
-                          <div className="form-group">
-                            <label htmlFor="input-unlock-time">UNLOCK DATE & TIME</label>
-                            <input 
-                              type="datetime-local" 
-                              id="input-unlock-time" 
-                              required
-                              value={unlockDateTime}
-                              onChange={(e) => syncFromDateTime(e.target.value)}
-                            />
-                          </div>
-
-                          <div className="form-group">
-                            <label htmlFor="input-lock-seconds">LOCK DURATION (SECONDS)</label>
-                            <input 
-                              type="number" 
-                              id="input-lock-seconds" 
-                              placeholder="e.g., 86400" 
-                              required
-                              min="1"
-                              value={lockDurationSeconds === 0 ? '0' : Number(lockDurationSeconds).toString()}
-                              onChange={(e) => syncFromDuration(e.target.value)}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                            <label style={{ margin: 0 }}>QUICK LOCK DURATION SELECTOR</label>
-                            <span className="address-mono" style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600 }}>
-                              {PREDEFINED_DURATION_LABELS[quickDurationIndex]} ({lockDurationSeconds.toLocaleString()} seconds)
-                            </span>
-                          </div>
-                          <input 
-                            type="range" 
-                            min="0" 
-                            max="7" 
-                            value={quickDurationIndex} 
-                            onChange={(e) => syncFromSlider(e.target.value)}
-                            className="split-slider"
-                            style={{ margin: '0.5rem 0' }}
-                          />
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                            <span>30s</span>
-                            <span>5m</span>
-                            <span>1h</span>
-                            <span>1d</span>
-                            <span>1w</span>
-                            <span>1m</span>
-                            <span>6m</span>
-                            <span>1y</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="form-group">
-                        <label htmlFor="input-tenant-name">TENANT NAME (FOR NOTIFICATION)</label>
-                        <input 
-                          type="text" 
-                          id="input-tenant-name" 
-                          placeholder="Your Name" 
-                          required
-                          value={createFormData.tenantName}
-                          onChange={(e) => setCreateFormData({ ...createFormData, tenantName: e.target.value })}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label htmlFor="input-landlord-name">LANDLORD NAME (FOR NOTIFICATION)</label>
-                        <input 
-                          type="text" 
-                          id="input-landlord-name" 
-                          placeholder="Landlord Name" 
-                          required
-                          value={createFormData.landlordName}
-                          onChange={(e) => setCreateFormData({ ...createFormData, landlordName: e.target.value })}
-                        />
-                      </div>
-
-                      <button type="submit" disabled={isCreating} className="btn btn-primary btn-full pill-btn">
-                        {isCreating ? 'PROPOSING LEASE INITIALIZATION...' : 'INITIALIZE ESCROW ON-CHAIN'}
-                      </button>
-                    </form>
-                  </div>
-                )}
-
-                {/* Manage / Interact Panel */}
-                {activeTab === 'manage' && (
-                  <div className="workspace-panel">
-                    <h2 className="section-title">ACTIVE INTERACTION</h2>
-                    <p className="section-desc">Search and load a lease escrow by its unique numeric Lease ID to perform actions.</p>
-
-                    <div className="search-box">
-                      <input 
-                        type="text" 
-                        className="address-mono" 
-                        placeholder="Enter Lease ID (e.g., 578129031)..."
-                        value={searchLeaseId}
-                        onChange={(e) => setSearchLeaseId(e.target.value)}
-                      />
-                      <button onClick={() => handleLoadEscrow(searchLeaseId)} className="btn btn-secondary pill-btn">LOAD</button>
-                    </div>
-
-                    {/* Simulation Error Panel */}
-                    {errorDetails && (
-                      <div className="info-banner error" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1.25rem', borderRadius: '16px', background: 'rgba(255, 23, 68, 0.05)', border: '1px solid rgba(255, 23, 68, 0.15)', width: '100%' }}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-error)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: '20px', height: '20px', flexShrink: 0 }}>
-                          <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon>
-                          <line x1="12" y1="9" x2="12" y2="13"></line>
-                          <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                        </svg>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', textAlign: 'left' }}>
-                          <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--color-error)', letterSpacing: '0.05em' }}>ERROR</span>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>This ID is invalid.</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Escrow Details */}
-                    {activeEscrowDetails && (() => {
-                      const isLocked = activeEscrowDetails.unlockTime * 1000 > Date.now();
-                      return (
-                        <div>
-                        <div className="loaded-escrow-header">
-                          <h3 className="escrow-title-text">{activeEscrowDetails.title}</h3>
-                          <span className={`badge-status ${
-                            activeEscrowDetails.status === 0 ? 'status-created' :
-                            activeEscrowDetails.status === 1 ? 'status-active' :
-                            activeEscrowDetails.status === 2 ? 'status-disputed' : 'status-released'
-                          }`}>
-                            {activeEscrowDetails.status === 0 ? 'UNFUNDED / CREATED' :
-                             activeEscrowDetails.status === 1 ? 'ACTIVE / LOCKED' :
-                             activeEscrowDetails.status === 2 ? 'DISPUTED' : 'RELEASED / CLOSED'}
-                          </span>
-                        </div>
-                        <p className="escrow-desc-text">{activeEscrowDetails.description}</p>
-
-                        {/* Visualizer columns */}
-                        <div className="transfer-visualizer">
-                          <div className="visual-col">
-                            <span className="visual-label">TENANT</span>
-                            <span className="address-mono text-truncate">{activeEscrowDetails.tenant}</span>
-                            <span className="visual-subtext">{activeEscrowDetails.tenantName}</span>
-                          </div>
-                          <div className="visual-divider">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M12 5v14M5 12h14"></path>
-                            </svg>
-                          </div>
-                          <div className="visual-col">
-                            <span className="visual-label">LANDLORD</span>
-                            <span className="address-mono text-truncate">{activeEscrowDetails.landlord}</span>
-                            <span className="visual-subtext">{activeEscrowDetails.landlordName}</span>
-                          </div>
-                        </div>
-
-                        {/* Escrow Stats */}
-                        <div className="escrow-stats">
-                          <div className="stat-item">
-                            <span className="stat-label">TOTAL ESCROW AMOUNT</span>
-                            <span className="address-mono stat-value">{`${formatXlmAmount(activeEscrowDetails.amount)} XLM`}</span>
-                          </div>
-                          <div className="stat-item">
-                            <span className="stat-label">LEASE ID</span>
-                            <span className="address-mono stat-value">{activeEscrowDetails.leaseId}</span>
-                          </div>
-                        </div>
-
-                        {/* Actions: Unfunded state */}
-                        {activeEscrowDetails.status === 0 && (() => {
-                          const isCurrentUserTenant = userAddress === activeEscrowDetails.tenant;
-                          if (isCurrentUserTenant) {
-                            return (
-                              <div className="action-section">
-                                <div className="info-banner warning" style={{ marginBottom: '1.25rem' }}>
-                                  <span>Escrow initialized. Please deposit the security deposit to activate the contract.</span>
-                                </div>
-                                <button 
-                                  onClick={handleFundEscrow} 
-                                  disabled={isFunding} 
-                                  className="btn btn-primary btn-full pill-btn"
-                                >
-                                  {isFunding ? 'FUNDING ESCROW ON-CHAIN...' : 'FUND ESCROW NOW (DEPOSIT)'}
-                                </button>
-                              </div>
-                            );
-                          } else {
-                            return (
-                              <div className="action-section">
-                                <div className="info-banner warning" style={{ padding: '1.25rem', border: '1px solid rgba(255, 179, 0, 0.25)', borderRadius: '16px', background: 'rgba(255, 179, 0, 0.05)', textAlign: 'left' }}>
-                                  <span style={{ fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>WAITING FOR TENANT DEPOSIT</span>
-                                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                    Lease initialized on-chain. Waiting for the tenant to deposit the security deposit funds.
-                                  </p>
-                                </div>
-                              </div>
-                            );
-                          }
-                        })()}
-
-                        {/* Actions: Active state */}
-                        {activeEscrowDetails.status === 1 && (() => {
-                          const isCurrentUserTenant = userAddress === activeEscrowDetails.tenant;
-                          const isCurrentUserLandlord = userAddress === activeEscrowDetails.landlord;
-                          
-                          if (isCurrentUserTenant) {
-                            if (activeEscrowDetails.tenantProposal) {
-                              return (
-                                <div className="action-section">
-                                  <div className="info-banner success" style={{ padding: '1.25rem', border: '1px solid var(--border-color)', borderRadius: '16px', background: 'rgba(255,255,255,0.01)', textAlign: 'left' }}>
-                                    <span style={{ fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>SETTLEMENT PROPOSAL SUBMITTED</span>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                      You proposed: <strong>Tenant {formatXlmAmount(activeEscrowDetails.tenantProposal[0])} XLM / Landlord {formatXlmAmount(activeEscrowDetails.tenantProposal[1])} XLM</strong>.
-                                    </p>
-                                    <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                      Waiting for Landlord review. You cannot perform further actions.
-                                    </p>
-                                  </div>
-                                </div>
-                              );
-                            }
-                          } else if (isCurrentUserLandlord) {
-                            if (!activeEscrowDetails.tenantProposal) {
-                              return (
-                                <div className="action-section">
-                                  <div className="info-banner warning" style={{ padding: '1.25rem', border: '1px solid rgba(255, 179, 0, 0.25)', borderRadius: '16px', background: 'rgba(255, 179, 0, 0.05)', textAlign: 'left' }}>
-                                    <span style={{ fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>WAITING FOR TENANT PROPOSAL</span>
-                                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                      The tenant has not submitted their settlement proposal yet. You will be able to review it and submit your proposal once they do.
-                                    </p>
-                                  </div>
-                                </div>
-                              );
-                            }
-                          }
-
-                          return (
-                            <div className="action-section">
-                              <h4 className="action-heading">PROPOSE RELEASE SPLIT</h4>
-                              <p className="action-desc">Negotiate the refund. Enter the split. If landlord and tenant splits match, release executes automatically. Conflicting splits will trigger a dispute.</p>
-
-                              {/* Show details of existing split proposals */}
-                              {(activeEscrowDetails.tenantProposal || activeEscrowDetails.landlordProposal) && (
-                                <div className="info-banner success" style={{ marginBottom: '1.25rem', padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)' }}>
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', textAlign: 'left', fontSize: '0.85rem' }}>
-                                    {activeEscrowDetails.tenantProposal && (
-                                      <span>
-                                        <strong>Tenant proposed:</strong> Tenant {formatXlmAmount(activeEscrowDetails.tenantProposal[0])} XLM / Landlord {formatXlmAmount(activeEscrowDetails.tenantProposal[1])} XLM
-                                      </span>
-                                    )}
-                                    {activeEscrowDetails.landlordProposal && (
-                                      <span>
-                                        <strong>Landlord proposed:</strong> Tenant {formatXlmAmount(activeEscrowDetails.landlordProposal[0])} XLM / Landlord {formatXlmAmount(activeEscrowDetails.landlordProposal[1])} XLM
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Range Slider for proposals */}
-                              <div className="slider-container">
-                                <div className="slider-labels">
-                                  <span>TO TENANT: <strong className="address-mono">{`${formatXlmAmount(rangeSplitVal)} XLM`}</strong></span>
-                                  <span>TO LANDLORD: <strong className="address-mono">{`${formatXlmAmount(activeEscrowDetails.amount - rangeSplitVal)} XLM`}</strong></span>
-                                </div>
-                                {/* Locked banner */}
-                                {isLocked && (
-                                  <div className="info-banner warning" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1.25rem', borderRadius: '16px', border: '1px solid rgba(255, 179, 0, 0.25)', background: 'rgba(255, 179, 0, 0.05)', marginBottom: '1.5rem' }}>
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#ffb300', flexShrink: 0 }}>
-                                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                    </svg>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', textAlign: 'left' }}>
-                                      <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#ffb300', letterSpacing: '0.05em' }}>FUNDS DEPOSIT TIME-LOCKED</span>
-                                      <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                        This escrow agreement is locked for the lease contract duration. You can propose or release splits starting on <strong>{formatDateTime(activeEscrowDetails.unlockTime * 1000)}</strong>.
-                                      </span>
-                                    </div>
-                                  </div>
-                                )}
-
-                                <input 
-                                  type="range" 
-                                  min="0" 
-                                  max={activeEscrowDetails.amount} 
-                                  value={rangeSplitVal} 
-                                  onChange={(e) => setRangeSplitVal(Number(e.target.value))}
-                                  className="split-slider"
-                                  disabled={isLocked}
-                                  style={isLocked ? { cursor: 'not-allowed', opacity: 0.5 } : {}}
-                                />
-                              </div>
-
-                              {isCurrentUserLandlord && (
-                                <div className="form-group" style={{ marginTop: '1.25rem', marginBottom: '1.25rem' }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <label htmlFor="landlord-dispute-reason">RAISE DISPUTE REASON</label>
-                                    {rangeSplitVal !== Number(activeEscrowDetails.tenantProposal?.[0]) && (
-                                      <span style={{ fontSize: '0.65rem', color: 'var(--color-error)', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>REQUIRED (CONFLICTING PROPOSAL)</span>
-                                    )}
-                                  </div>
-                                  <textarea
-                                    id="landlord-dispute-reason"
-                                    placeholder={
-                                      rangeSplitVal === Number(activeEscrowDetails.tenantProposal?.[0])
-                                        ? "Dispute reason disabled (your proposal matches Tenant's split)"
-                                        : "Enter reason for conflicting proposal/dispute..."
-                                    }
-                                    rows="3"
-                                    value={landlordDisputeReason}
-                                    onChange={(e) => {
-                                      setLandlordDisputeReason(e.target.value);
-                                      if (e.target.value.trim()) {
-                                        setShowDisputeReasonError(false);
-                                      }
-                                    }}
-                                    disabled={rangeSplitVal === Number(activeEscrowDetails.tenantProposal?.[0])}
-                                    style={{
-                                      opacity: (rangeSplitVal === Number(activeEscrowDetails.tenantProposal?.[0])) ? 0.5 : 1,
-                                      cursor: (rangeSplitVal === Number(activeEscrowDetails.tenantProposal?.[0])) ? 'not-allowed' : 'text',
-                                      backgroundColor: (rangeSplitVal === Number(activeEscrowDetails.tenantProposal?.[0])) ? 'rgba(255,255,255,0.01)' : 'var(--surface-color-light)',
-                                      borderColor: showDisputeReasonError ? 'var(--color-error)' : 'var(--border-color)',
-                                      borderRadius: '12px',
-                                      padding: '0.9rem 1.1rem',
-                                      color: 'var(--text-primary)',
-                                      fontFamily: 'var(--font-sans)',
-                                      fontSize: '0.95rem',
-                                      transition: 'border-color var(--transition-fast), outline var(--transition-fast)',
-                                      width: '100%',
-                                      resize: 'vertical'
-                                    }}
-                                  />
-                                </div>
-                              )}
-
-                              <button 
-                                onClick={handleProposeSplit} 
-                                disabled={isProposing || isLocked} 
-                                className="btn btn-primary btn-full pill-btn"
-                                style={isLocked ? { cursor: 'not-allowed', opacity: 0.7 } : {}}
-                              >
-                                {isProposing ? 'SUBMITTING RELEASE PROPOSAL...' : isLocked ? 'RELEASE LOCK ACTIVE' : 'SUBMIT RELEASE PROPOSAL'}
-                              </button>
-                            </div>
-                          );
-                        })()}
-
-                        {/* Actions: Disputed state */}
-                        {activeEscrowDetails.status === 2 && (
-                          <div className="action-section">
-                            <div className="info-banner error">
-                              <span>THIS ESCROW IS CURRENTLY DISPUTED</span>
-                              <p className="dispute-reason-txt">{`Reason: "${activeEscrowDetails.disputeReason}"`}</p>
-                            </div>
-
-                            {/* Arbitrator Decision controls */}
-                            {userAddress === activeEscrowDetails.arbitrator ? (
-                              <div>
-                                <h4 className="action-heading">ARBITRATOR TIE-BREAKER DECISION</h4>
-                                <p className="action-desc">You are the registered arbitrator. Review the dispute between Tenant <strong>{activeEscrowDetails.tenantName}</strong> and Landlord <strong>{activeEscrowDetails.landlordName}</strong>, compare the proposals, and decide the final distribution split.</p>
-
-                                {/* Side-by-Side Proposals Comparison */}
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1.25rem', marginBottom: '1.5rem' }}>
-                                  <div style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.01)', textAlign: 'left' }}>
-                                    <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--color-primary)', letterSpacing: '0.05em', fontWeight: 700, display: 'block', marginBottom: '0.5rem' }}>
-                                      TENANT SETTLEMENT PROPOSAL
-                                    </span>
-                                    {activeEscrowDetails.tenantProposal ? (
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                                          <span style={{ color: 'var(--text-secondary)' }}>To Tenant:</span>
-                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{formatXlmAmount(activeEscrowDetails.tenantProposal[0])} XLM</strong>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                                          <span style={{ color: 'var(--text-secondary)' }}>To Landlord:</span>
-                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{formatXlmAmount(activeEscrowDetails.tenantProposal[1])} XLM</strong>
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No proposal submitted</span>
-                                    )}
-                                  </div>
-
-                                  <div style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.01)', textAlign: 'left' }}>
-                                    <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--color-primary)', letterSpacing: '0.05em', fontWeight: 700, display: 'block', marginBottom: '0.5rem' }}>
-                                      LANDLORD SETTLEMENT PROPOSAL
-                                    </span>
-                                    {activeEscrowDetails.landlordProposal ? (
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                                          <span style={{ color: 'var(--text-secondary)' }}>To Tenant:</span>
-                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{formatXlmAmount(activeEscrowDetails.landlordProposal[0])} XLM</strong>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                                          <span style={{ color: 'var(--text-secondary)' }}>To Landlord:</span>
-                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{formatXlmAmount(activeEscrowDetails.landlordProposal[1])} XLM</strong>
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No proposal submitted</span>
-                                    )}
-                                  </div>
-                                </div>
-
-                                <div className="slider-container">
-                                  <div className="slider-labels">
-                                    <span>TO TENANT: <strong className="address-mono">{`${formatXlmAmount(rangeArbVal)} XLM`}</strong></span>
-                                    <span>TO LANDLORD: <strong className="address-mono">{`${formatXlmAmount(activeEscrowDetails.amount - rangeArbVal)} XLM`}</strong></span>
-                                  </div>
-                                  {/* Locked banner */}
-                                  {isLocked && (
-                                    <div className="info-banner warning" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1.25rem', borderRadius: '16px', border: '1px solid rgba(255, 179, 0, 0.25)', background: 'rgba(255, 179, 0, 0.05)', marginTop: '1.25rem', marginBottom: '1.25rem' }}>
-                                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#ffb300', flexShrink: 0 }}>
-                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                      </svg>
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', textAlign: 'left' }}>
-                                        <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#ffb300', letterSpacing: '0.05em' }}>ARBITRATION LOCK ACTIVE</span>
-                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                          The dispute cannot be resolved until the contract locks expire on <strong>{formatDateTime(activeEscrowDetails.unlockTime * 1000)}</strong>.
-                                        </span>
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  <input 
-                                    type="range" 
-                                    min="0" 
-                                    max={activeEscrowDetails.amount} 
-                                    value={rangeArbVal} 
-                                    onChange={(e) => setRangeArbVal(Number(e.target.value))}
-                                    className="split-slider"
-                                    disabled={isLocked}
-                                    style={isLocked ? { cursor: 'not-allowed', opacity: 0.5 } : {}}
-                                  />
-                                </div>
-                                <button 
-                                  onClick={handleResolveDispute} 
-                                  disabled={isResolving || isLocked} 
-                                  className="btn btn-danger btn-full pill-btn"
-                                  style={isLocked ? { cursor: 'not-allowed', opacity: 0.7 } : {}}
-                                >
-                                  {isResolving ? 'RESOLVING DISPUTE...' : isLocked ? 'ARBITRATION LOCKED' : 'EXECUTE ARBITRATOR RESOLUTION'}
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="non-arbitrator-msg" style={{ width: '100%' }}>
-                                <h4 style={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-primary)', marginBottom: '0.75rem', textAlign: 'left' }}>
-                                  COMPARE CONFLICTING PROPOSALS
-                                </h4>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '0.25rem', marginBottom: '1.25rem', width: '100%' }}>
-                                  <div style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.01)', textAlign: 'left' }}>
-                                    <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--color-primary)', letterSpacing: '0.05em', fontWeight: 700, display: 'block', marginBottom: '0.5rem' }}>
-                                      TENANT SETTLEMENT PROPOSAL
-                                    </span>
-                                    {activeEscrowDetails.tenantProposal ? (
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                                          <span style={{ color: 'var(--text-secondary)' }}>To Tenant:</span>
-                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{formatXlmAmount(activeEscrowDetails.tenantProposal[0])} XLM</strong>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                                          <span style={{ color: 'var(--text-secondary)' }}>To Landlord:</span>
-                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{formatXlmAmount(activeEscrowDetails.tenantProposal[1])} XLM</strong>
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No proposal submitted</span>
-                                    )}
-                                  </div>
-
-                                  <div style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.01)', textAlign: 'left' }}>
-                                    <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--color-primary)', letterSpacing: '0.05em', fontWeight: 700, display: 'block', marginBottom: '0.5rem' }}>
-                                      LANDLORD SETTLEMENT PROPOSAL
-                                    </span>
-                                    {activeEscrowDetails.landlordProposal ? (
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                                          <span style={{ color: 'var(--text-secondary)' }}>To Tenant:</span>
-                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{formatXlmAmount(activeEscrowDetails.landlordProposal[0])} XLM</strong>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                                          <span style={{ color: 'var(--text-secondary)' }}>To Landlord:</span>
-                                          <strong className="address-mono" style={{ color: 'var(--text-primary)' }}>{formatXlmAmount(activeEscrowDetails.landlordProposal[1])} XLM</strong>
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No proposal submitted</span>
-                                    )}
-                                  </div>
-                                </div>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', textAlign: 'center', background: 'rgba(255,255,255,0.02)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                                  Waiting for the Arbitrator to review the evidence and submit a decision.
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Actions: Released state */}
-                        {activeEscrowDetails.status === 3 && (
-                          <div className="action-section">
-                            <div className="info-banner success" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem', padding: '1.25rem' }}>
-                              <span style={{ fontWeight: 700 }}>ESCROW RELEASED & RESOLVED SUCCESSFULLY</span>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                <p style={{ margin: 0, fontSize: '0.85rem' }}>Funds sent back to accounts.</p>
-                                <button onClick={() => setActivePage('dashboard')} className="btn btn-primary pill-btn" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', border: 'none', fontWeight: 600 }}>
-                                  Check Dashboard
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-              </div>
-
-            </div>
-          </div>
-        )}
-
-        {/* Page 2: Dashboard Section */}
-        {activePage === 'dashboard' && (
-          <div className="page-section">
-            <div className="workspace-grid bento-grid">
-              
-              {/* Platform Metrics Card */}
-              <div className="bento-card bento-card-metrics" style={{ gridColumn: 'span 1', gridRow: 'span 3' }}>
-                <h2 className="section-title">PLATFORM PERFORMANCE</h2>
-                <p className="section-desc">Real-time stats across all smart contract instances.</p>
-
-                <div className="metrics-stack">
-                  <div className="metric-item">
-                    <span className="metric-label">TOTAL VOLUME LOCKED</span>
-                    <span className="address-mono metric-value">{`${metrics.tvl} XLM`}</span>
-                  </div>
-                  <div className="metric-item">
-                    <span className="metric-label">ACTIVE CONTRACTS</span>
-                    <span className="address-mono metric-value">{metrics.activeCount}</span>
-                  </div>
-                  <div className="metric-item">
-                    <span className="metric-label">TOTAL RESOLVED LEASES</span>
-                    <span className="address-mono metric-value">{metrics.resolvedCount}</span>
-                  </div>
-                  <div className="metric-item">
-                    <span className="metric-label">ON-CHAIN DISPUTES</span>
-                    <span className="address-mono metric-value">{metrics.disputeCount}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Live Escrow Dashboard */}
-              <div className="bento-card bento-card-dashboard" style={{ gridColumn: 'span 2', gridRow: 'span 3' }}>
-                <h2 className="section-title">ACTIVE AGENTS / PLATFORM DASHBOARD</h2>
-                <p className="section-desc">Current escrows tracked by the platform backend coordinator.</p>
- 
-                <div className="escrow-list">
-                  {!userAddress ? (
-                    <div className="dashboard-placeholder">Please connect your wallet to view your active escrows.</div>
-                  ) : (() => {
-                    const activeEscrows = dashboardEscrows.filter(e => {
-                      const status = String(e.status || '').toLowerCase();
-                      return status !== 'released' && status !== 'released (disputed)' && status !== 'resolved' && status !== '3';
-                    });
-                    
-                    if (activeEscrows.length === 0) {
-                      return <div className="dashboard-placeholder">No active escrows registered for this wallet.</div>;
-                    }
-                    
-                    return activeEscrows.map(escrow => (
-                      <div 
-                        key={escrow.leaseId} 
-                        className="escrow-row" 
-                        onClick={() => {
-                          setActivePage('workspace');
-                          setActiveTab('manage');
-                          setSearchLeaseId(escrow.leaseId);
-                          handleLoadEscrow(escrow.leaseId);
-                        }}
-                      >
-                        <div className="escrow-row-meta">
-                          <span className="escrow-row-title">{escrow.title}</span>
-                          <span className="escrow-row-address address-mono text-truncate" style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                            Tenant: <strong>{escrow.tenantName || 'Tenant'}</strong> | Landlord: <strong>{escrow.landlordName || 'Landlord'}</strong>
-                          </span>
-                          <span className="escrow-row-address address-mono text-truncate">{`Lease ID: ${escrow.leaseId}`}</span>
-                        </div>
-                        <div className="escrow-row-stats">
-                          <span className="escrow-row-amount address-mono">{escrow.amount}</span>
-                          <span className={`badge-status ${getStatusBadgeClass(escrow.status)}`}>{getStatusLabel(escrow.status)}</span>
-                        </div>
-                      </div>
-                    ));
-                  })()}
-                </div>
-              </div>
-
-              {/* Resolved Settlements Dashboard */}
-              <div className="bento-card bento-card-resolved" style={{ gridColumn: 'span 3', gridRow: 'span 3', marginTop: '1.5rem' }}>
-                <h2 className="section-title">RESOLVED SETTLEMENTS & DEPOSIT PAYOUTS</h2>
-                <p className="section-desc">Historical timeline and final on-chain payout distributions.</p>
-                <div className="escrow-list">
-                  {!userAddress ? (
-                    <div className="dashboard-placeholder">Please connect your wallet to view historical resolutions.</div>
-                  ) : (() => {
-                    const resolvedEscrows = dashboardEscrows.filter(e => {
-                      const statusLower = String(e.status).toLowerCase();
-                      const isResolved = statusLower === 'released' || statusLower === 'released (disputed)' || statusLower === 'resolved' || statusLower === '3';
-                      if (!isResolved) return false;
-
-                      // Filter based on connected wallet role
-                      if (e.tenant === userAddress) {
-                        return true;
-                      }
-                      if (e.landlord === userAddress) {
-                        return true;
-                      }
-                      if (e.arbitrator === userAddress) {
-                        // Arbitrator only sees disputes they were assigned to resolve
-                        const isDisputed = statusLower.includes('disput') || statusLower === 'resolved' || statusLower === '2' || statusLower === '3';
-                        const hasDisputeEvent = e.history && e.history.some(h => 
-                          String(h.event).toLowerCase().includes('dispute')
-                        );
-                        return isDisputed || hasDisputeEvent;
-                      }
-                      return false;
-                    });
-                    
-                    if (resolvedEscrows.length === 0) {
-                      return <div className="dashboard-placeholder">No resolved escrows registered for this wallet.</div>;
-                    }
-                    
-                    return resolvedEscrows.map(escrow => (
-                      <div 
-                        key={escrow.leaseId} 
-                        className="escrow-row resolved-escrow-row" 
-                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '0.75rem', cursor: 'default', height: 'auto', padding: '1.25rem' }}
-                      >
-                        {/* Title & Status Header */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                            <span className="escrow-row-title" style={{ fontSize: '0.95rem' }}>{escrow.title}</span>
-                            <span className="escrow-row-address address-mono">{`Lease ID: ${getSpoileredLeaseId(escrow.leaseId)}`}</span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <span className="escrow-row-amount address-mono" style={{ fontSize: '1rem', fontWeight: 700 }}>{escrow.amount}</span>
-                            <span className={`badge-status ${getStatusBadgeClass(escrow.status)}`}>
-                              {getStatusLabel(escrow.status)}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Participants context */}
-                        <div style={{ display: 'flex', gap: '1rem', fontSize: '0.75rem', color: 'var(--text-secondary)', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem' }}>
-                          <span>Tenant: <strong style={{ color: 'var(--text-primary)' }}>{escrow.tenantName}</strong></span>
-                          <span>Landlord: <strong style={{ color: 'var(--text-primary)' }}>{escrow.landlordName}</strong></span>
-                        </div>
-
-                        {/* Timeline */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', textAlign: 'left', marginTop: '0.25rem' }}>
-                          <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--color-primary)', letterSpacing: '0.05em', fontWeight: 700 }}>
-                            ON-CHAIN INVOCATIONS TIMELINE & VERIFICATION
-                          </span>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', paddingLeft: '0.5rem', borderLeft: '2px solid rgba(255,255,255,0.05)' }}>
-                            {escrow.history && escrow.history.map((event, idx) => {
-                              let roleLabel = '';
-                              let roleClass = '';
-                              
-                              if (event.callerRole) {
-                                if (event.callerRole === 'Tenant') {
-                                  roleLabel = 'Tenant Invocation';
-                                  roleClass = 'role-tenant';
-                                } else if (event.callerRole === 'Landlord') {
-                                  roleLabel = 'Landlord Invocation';
-                                  roleClass = 'role-landlord';
-                                } else if (event.callerRole === 'Arbitrator') {
-                                  roleLabel = 'Arbitrator Invocation';
-                                  roleClass = 'role-arbitrator';
-                                }
-                              } else {
-                                // Fallback substring parsing for legacy/historic timeline entries
-                                const eventStr = event.event.toLowerCase();
-                                const isCreated = eventStr.includes('created') || eventStr.includes('initialized');
-                                const isFunded = eventStr.includes('funded');
-                                const isTenantProposed = eventStr.startsWith('tenant proposed');
-                                const isLandlordProposed = eventStr.startsWith('landlord proposed');
-                                const isDisputeDeclaredByTenant = eventStr.includes('dispute declared by tenant');
-                                const isDisputeDeclaredByLandlord = eventStr.includes('dispute declared by landlord');
-                                const isArbitratorResolve = eventStr.includes('dispute resolved') || eventStr.includes('arbitrator');
-                                
-                                if (isCreated || isLandlordProposed || isDisputeDeclaredByLandlord) {
-                                  roleLabel = 'Landlord Invocation';
-                                  roleClass = 'role-landlord';
-                                } else if (isFunded || isTenantProposed || isDisputeDeclaredByTenant) {
-                                  roleLabel = 'Tenant Invocation';
-                                  roleClass = 'role-tenant';
-                                } else if (isArbitratorResolve) {
-                                  roleLabel = 'Arbitrator Invocation';
-                                  roleClass = 'role-arbitrator';
-                                } else if (eventStr.includes('released')) {
-                                  const tenantProposedFirst = escrow.history.some(h => h.event.toLowerCase().startsWith('tenant proposed'));
-                                  if (tenantProposedFirst) {
-                                    roleLabel = 'Landlord Invocation';
-                                    roleClass = 'role-landlord';
-                                  } else {
-                                    roleLabel = 'Tenant Invocation';
-                                    roleClass = 'role-tenant';
-                                  }
-                                }
-                              }
-
-                              return (
-                                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', gap: '1rem', padding: '0.25rem 0' }}>
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                                    <span style={{ color: 'var(--text-primary)' }}>{event.event}</span>
-                                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(event.timestamp).toLocaleString()}</span>
-                                  </div>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                                    {roleLabel && (
-                                      <span className={`role-badge ${roleClass}`} style={{ fontSize: '0.6rem', padding: '0.1rem 0.35rem', borderRadius: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', letterSpacing: '0.02em' }}>
-                                        {roleLabel}
-                                      </span>
-                                    )}
-                                    {event.txHash ? (
-                                      <a 
-                                        href={`https://stellar.expert/explorer/testnet/tx/${event.txHash}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="btn btn-secondary"
-                                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.65rem', fontFamily: 'var(--font-mono)', borderRadius: '4px', textDecoration: 'none' }}
-                                      >
-                                        Verify Tx &rarr;
-                                      </a>
-                                    ) : (
-                                      <a 
-                                        href={`https://stellar.expert/explorer/testnet/contract/${escrow.address || DEFAULT_CONTRACT_ID}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="btn btn-secondary"
-                                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.65rem', fontFamily: 'var(--font-mono)', borderRadius: '4px', textDecoration: 'none', opacity: 0.8 }}
-                                      >
-                                        Verify Contract &rarr;
-                                      </a>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    ));
-                  })()}
-                </div>
-              </div>
-
-            </div>
-          </div>
-        )}
-
-        {/* Page 3: Documentation Section */}
-        {activePage === 'docs' && (
-          <div className="page-section">
-            <div className="workspace-grid bento-grid">
-              
-              {/* Smart Contract Overview */}
-              <div className="bento-card bento-card-docs-intro" style={{ gridColumn: 'span 2', gridRow: 'span 3' }}>
-                <h2 className="section-title">SOROBAN SMART ESCROW SPECIFICATION</h2>
-                <p className="section-desc">Technical layout of the cryptographic rental deposit protocol.</p>
-                <div className="docs-content">
-                  <p className="docs-paragraph">
-                    Deposhield uses dedicated, WASM-compiled smart contract instances deployed to the <strong>Stellar Soroban Network</strong>.
-                    By committing security deposits directly to code logic rather than a single entity, the platform ensures trustless, neutral dispute backstops.
-                  </p>
-                  <h3 className="docs-subheading">Escrow Role Permissions</h3>
-                  <div className="role-grid">
-                    <div className="role-card tenant">
-                      <span className="role-badge">TENANT</span>
-                      <p className="role-desc">Funds the escrow on-chain. Submits move-out refund split proposals. Can trigger formal arbitrator disputes.</p>
-                    </div>
-                    <div className="role-card landlord">
-                      <span className="role-badge landlord">LANDLORD</span>
-                      <p className="role-desc">Notified of lease funding. Proposes split refunds. Reclaims allocated damages once splits match.</p>
-                    </div>
-                    <div className="role-card arbitrator">
-                      <span className="role-badge arbitrator">ARBITRATOR</span>
-                      <p className="role-desc">Acts as a neutral third-party key-holder. Resolves active disputes by submitting the final distribution split.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Lifecycle Steps Guide */}
-              <div className="bento-card bento-card-docs-steps" style={{ gridColumn: 'span 1', gridRow: 'span 3' }}>
-                <h2 className="section-title">ESCROW LIFECYCLE</h2>
-                <p className="section-desc">Stages of contract progression on-chain.</p>
-                <div className="lifecycle-timeline">
-                  <div className="timeline-step">
-                    <div className="step-num">1</div>
-                    <div className="step-info">
-                      <h4>INITIALIZE</h4>
-                      <p>Deploy and initialize the lease contract on-chain with parties keys.</p>
-                    </div>
-                  </div>
-                  <div className="timeline-step">
-                    <div className="step-num">2</div>
-                    <div className="step-info">
-                      <h4>FUND DEPOSIT</h4>
-                      <p>Tenant transfers the deposit amount to contract secure custody.</p>
-                    </div>
-                  </div>
-                  <div className="timeline-step">
-                    <div className="step-num">3</div>
-                    <div className="step-info">
-                      <h4>NEGOTIATE SPLIT</h4>
-                      <p>Submit matching split proposals. Once splits match, payouts execute.</p>
-                    </div>
-                  </div>
-                  <div className="timeline-step">
-                    <div className="step-num">4</div>
-                    <div className="step-info">
-                      <h4>RESOLVE DISPUTE</h4>
-                      <p>If negotiation stalls, the arbitrator breaks the tie to release funds.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Examples Card */}
-              <div className="bento-card bento-card-docs-examples" style={{ gridColumn: 'span 3', marginTop: '1rem' }}>
-                <h2 className="section-title">DETAILED USER WALKTHROUGH EXAMPLES</h2>
-                <p className="section-desc">Practical usage scenarios demonstrating trustless deposit negotiation and arbitration.</p>
-                
-                <div className="docs-content" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
-                  
-                  {/* Example 1: Without Arbitrator */}
-                  <div style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '1.5rem' }}>
-                    <h3 style={{ color: 'var(--color-success)', fontFamily: 'var(--font-sans)', fontSize: '1rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: 0 }}>
-                      🤝 EXAMPLE 1: MUTUAL RELEASE (NO ARBITRATOR)
-                    </h3>
-                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '1rem' }}>
-                      Best suited for standard move-outs where tenant and landlord are in agreement regarding refund splits (e.g., minor wear-and-tear deductions).
-                    </p>
-                    <ol style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.6, paddingLeft: '1.15rem', margin: 0 }}>
-                      <li><strong>Deploy Lease:</strong> Tenant connects via Account 1, enters Landlord and Arbitrator keys under CREATE ESCROW, locks amount, and clicks Initialize to generate a unique Lease ID.</li>
-                      <li><strong>Lock Funds:</strong> Tenant goes to MANAGE ESCROW, loads the Lease ID, and clicks FUND ESCROW NOW. Funds lock inside the contract.</li>
-                      <li><strong>Tenant Proposes Split:</strong> At move-out, Tenant proposes a split refund via the split slider and signs.</li>
-                      <li><strong>Landlord Matches Split:</strong> Landlord switches wallet to Account 2, connects, loads same Lease ID, drags slider to match split, and submits.</li>
-                      <li><strong>Instant Payout:</strong> Contract detects matching splits, immediately transfers splits on-chain, and closes the lease.</li>
-                    </ol>
-                  </div>
-
-                  {/* Example 2: With Arbitrator */}
-                  <div style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '1.5rem' }}>
-                    <h3 style={{ color: 'var(--color-error)', fontFamily: 'var(--font-sans)', fontSize: '1rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: 0 }}>
-                      ⚖️ EXAMPLE 2: DISPUTED RESOLUTION (WITH ARBITRATOR)
-                    </h3>
-                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '1rem' }}>
-                      Best suited for conflicts where negotiations fail (e.g., landlord claims major paint/cleaning damage and refuses a partial refund).
-                    </p>
-                    <ol style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.6, paddingLeft: '1.15rem', margin: 0 }}>
-                      <li><strong>Setup & Fund:</strong> Tenant initializes and funds the lease using the steps in Example 1.</li>
-                      <li><strong>Conflicting Proposals:</strong> Tenant proposes a 90/10 split. Landlord disagrees and proposes a 30/70 split. The interface locks input sliders and displays a "Proposals Conflict" error warning.</li>
-                      <li><strong>Declare Dispute:</strong> Tenant or Landlord types a reason under RAISE DISPUTE and submits. Contract status locks to DISPUTED.</li>
-                      <li><strong>Arbitrator Verdict:</strong> Arbitrator switches wallet to Account 3, connects, and loads the Lease ID. The Arbitrator-only decision slider reveals.</li>
-                      <li><strong>Final Payout:</strong> The neutral Arbitrator sets the final split and clicks RESOLVE DISPUTE. The contract executes payouts and closes.</li>
-                    </ol>
-                  </div>
-                  
-                </div>
-              </div>
-
-            </div>
-          </div>
-        )}
-
+      <main className={
+        (currentPath.toLowerCase() === '/workspace' || currentPath.toLowerCase() === '/dashboard')
+          ? "container"
+          : "main-content"
+      }>
+        {(() => {
+          const pathLower = currentPath.toLowerCase();
+          if (pathLower === '/workspace' || pathLower === '/dashboard') {
+            return (
+              <Workspace
+                currentPath={currentPath}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                userAddress={userAddress}
+                walletBalance={walletBalance}
+                createFormData={createFormData}
+                setCreateFormData={setCreateFormData}
+                handleCreateEscrow={handleCreateEscrow}
+                isCreating={isCreating}
+                searchLeaseId={searchLeaseId}
+                setSearchLeaseId={setSearchLeaseId}
+                handleLoadEscrow={handleLoadEscrow}
+                activeEscrowDetails={activeEscrowDetails}
+                errorDetails={errorDetails}
+                handleFundEscrow={handleFundEscrow}
+                isFunding={isFunding}
+                rangeSplitVal={rangeSplitVal}
+                setRangeSplitVal={setRangeSplitVal}
+                landlordDisputeReason={landlordDisputeReason}
+                setLandlordDisputeReason={setLandlordDisputeReason}
+                showDisputeReasonError={showDisputeReasonError}
+                setShowDisputeReasonError={setShowDisputeReasonError}
+                handleProposeSplit={handleProposeSplit}
+                isProposing={isProposing}
+                rangeArbVal={rangeArbVal}
+                setRangeArbVal={setRangeArbVal}
+                handleArbitratorDecision={handleResolveDispute}
+                isResolving={isResolving}
+                metrics={metrics}
+                dashboardEscrows={dashboardEscrows}
+                myEscrows={myEscrows}
+                historicalEscrows={historicalEscrows}
+                quickDurationIndex={quickDurationIndex}
+                setQuickDurationIndex={setQuickDurationIndex}
+                lockDurationSeconds={lockDurationSeconds}
+                unlockDateTime={unlockDateTime}
+                formatXlmAmount={formatXlmAmount}
+                formatDateTime={formatDateTime}
+                getSpoileredLeaseId={getSpoileredLeaseId}
+                PREDEFINED_DURATION_LABELS={PREDEFINED_DURATION_LABELS}
+                handleQuickDurationChange={syncFromSlider}
+                handleUnlockDateTimeChange={syncFromDateTime}
+                onNavigate={navigate}
+              />
+            );
+          } else if (pathLower === '/docs') {
+            return <DocsPage onNavigate={navigate} />;
+          } else {
+            return <HomePage onNavigate={navigate} />;
+          }
+        })()}
       </main>
 
       <footer className="footer">
         <div className="footer-inner">
-          <span>DEPOSHIELD POWERED BY STELLAR SOROBAN SMART CONTRACT PROTOCOL</span>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-            <a 
-              href={`https://stellar.expert/explorer/testnet/contract/${DEFAULT_CONTRACT_ID}`} 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="btn btn-secondary pill-btn footer-btn" 
-              style={{ padding: '0.45rem 1rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontFamily: 'var(--font-mono)', border: '1px solid var(--border-color)', textDecoration: 'none', borderRadius: '20px' }}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                <polyline points="15 3 21 3 21 9"></polyline>
-                <line x1="10" y1="14" x2="21" y2="3"></line>
-              </svg>
-              VIEW SHARED CONTRACT
-            </a>
-
+          <div className="footer-col brand-col">
+            <div className="footer-brand-title">DEPOSHIELD</div>
+            <p className="footer-brand-desc">Decentralized, trustless security deposit escrow built on Stellar and Soroban. Safe, secure, and neutral.</p>
           </div>
-          <div className="status-indicator">
-            <span className="status-dot green"></span>
-            <span className="status-text font-mono">TESTNET ONLINE</span>
+          
+          <div className="footer-col protocol-col">
+            <span className="footer-col-title">PROTOCOL</span>
+            <span className="footer-col-text">DEPOSHIELD POWERED BY STELLAR SOROBAN SMART CONTRACT PROTOCOL</span>
+            <div className="footer-status-wrap">
+              <div className="status-indicator">
+                <span className="status-dot green"></span>
+                <span className="status-text font-mono">TESTNET ONLINE</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="footer-col contract-col">
+            <span className="footer-col-title">VERIFICATION</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem' }}>
+              <a 
+                href={`https://stellar.expert/explorer/testnet/contract/${DEFAULT_CONTRACT_ID}`} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="btn btn-secondary pill-btn footer-btn" 
+                style={{ padding: '0.45rem 1rem', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontFamily: 'var(--font-mono)', border: '1px solid var(--border-color)', textDecoration: 'none', borderRadius: '20px' }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+                VIEW SHARED CONTRACT
+              </a>
+            </div>
+          </div>
+        </div>
+        <div className="footer-bottom">
+          <div className="footer-bottom-inner">
+            <span>&copy; {new Date().getFullYear()} DepoShield. All rights reserved.</span>
+            <span>Decentralized trustless escrow on Stellar.</span>
           </div>
         </div>
       </footer>
