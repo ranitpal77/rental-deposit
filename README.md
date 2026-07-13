@@ -327,9 +327,13 @@ rental-deposit/
 │   ├── vite.config.js
 │   ├── package.json
 │   └── src/
-│       ├── App.jsx             # Main wallet-integrated dApp logic
+│       ├── App.jsx             # Main application and layout logic
 │       ├── index.jsx           # React mount point
-│       └── index.css           # Glassmorphic stylesheet
+│       ├── index.css           # Glassmorphic global stylesheet
+│       ├── components/
+│       │   └── ....            # UI component blocks
+│       └── pages/
+│           └── ....            # Routed application views
 ├── backend/
 │   ├── server.js               # Express metadata coordinator
 │   └── package.json
@@ -343,8 +347,8 @@ rental-deposit/
 ---
 
 ## 📝 User Feedback & Responses (User Onbording)
-- [User Feedback Google Form](https://forms.gle/1s3Abvi6QEcS1uqa8)
-- [User Responses](https://docs.google.com/spreadsheets/d/1f_zYJWeQhZJD-14bfmcK6Pbhmi8SlrjJbWZywKxbZ1Y/edit?usp=sharing)
+- [User Feedback Google Form](https://forms.gle/7xPVtErjEJQQMDcw6)
+- [User Responses](https://docs.google.com/spreadsheets/d/1f_zYJWeQhZJD-14bfmcK6Pbhmi8SlrjJbWZywKxbZ1Y/edit?resourcekey=&gid=267224706#gid=267224706)
 - Google Sheets -> [Feedback Iteration Tracker](https://docs.google.com/spreadsheets/d/1f_zYJWeQhZJD-14bfmcK6Pbhmi8SlrjJbWZywKxbZ1Y/edit?resourcekey=&gid=1774659193#gid=1774659193) 
 
 ---
@@ -400,6 +404,18 @@ All user feedback was collected via a [Google Form](https://forms.gle/1s3Abvi6QE
     <tr>
       <td>Display clickable transaction hash links in every notification for easy on-chain verification.</td>
     </tr>
+    <tr>
+      <td>Add an interactive landing page that clearly explains the platform and serves as an effective marketing experience.</td>
+      <td align="center"><a href="https://github.com/ranitpal77/rental-deposit/commit/ec68370614fdf59b2f4670c182bd6fba4bebe747">ec68370</a></td>
+    </tr>
+    <tr>
+      <td>Improve the overall responsiveness to ensure a seamless and consistent experience across desktop, tablet, and mobile devices.</td>
+      <td align="center" rowspan="3" valign="middle">
+  <a href="https://github.com/ranitpal77/rental-deposit/commit/c1fa2d9a2c36555e4e91f63227f8e2a159fe899b">c1fa2d9</a><br>
+  <a href="https://github.com/ranitpal77/rental-deposit/commit/ec68370614fdf59b2f4670c182bd6fba4bebe747">ec68370</a><br>
+  <a href="https://github.com/ranitpal77/rental-deposit/commit/4eda9505dc825b2855a9af1bc46772e522b18224">4eda950</a>
+</td>
+    </tr>
   </tbody>
 </table>
 
@@ -409,26 +425,26 @@ All user feedback was collected via a [Google Form](https://forms.gle/1s3Abvi6QE
 
 | Field | Value |
 |---|---|
-| Network | Stellar Testnet |
-| Contract ID | `CBFMZXLLIW2JUUWOC4ZQEJWRQCIGJEY34SHCVUDVIZ7NFVONF3G63LO6` |
-| Transaction Hash | `236696efe675ee4d766fbdc55bf5001ff358078e618274f3535a5857e20124a6` |
-| Developer Wallet | `GDFLHVAXB37QVIPV7LWLEIAPHQ7TYXG36LXX3CHMBFEQA67GDB44QLPI` |
+| **Network** | Stellar Testnet |
+| **Contract ID** | [`CBFMZXLLIW2JUUWOC4ZQEJWRQCIGJEY34SHCVUDVIZ7NFVONF3G63LO6`](https://stellar.expert/explorer/testnet/contract/CBFMZXLLIW2JUUWOC4ZQEJWRQCIGJEY34SHCVUDVIZ7NFVONF3G63LO6) |
+| **Deployment Transaction** | [`236696efe675ee4d766fbdc55bf5001ff358078e618274f3535a5857e20124a6`](https://stellar.expert/explorer/testnet/tx/236696efe675ee4d766fbdc55bf5001ff358078e618274f3535a5857e20124a6) |
+| **Developer Wallet** | `GDFLHVAXB37QVIPV7LWLEIAPHQ7TYXG36LXX3CHMBFEQA67GDB44QLPI` |
 
 ---
 
 ## 📸 Screenshots
 
 #### 📸 Deployed Smart Contract Screenshot
-![Deployed Contract](./assets/deployed-contract-02.png)
+![Deployed Contract](./assets/deployed-smart-contract-02.png)
 
 #### 📸 UI Screenshot
-![UI Screenshot](./assets/UI-02.png)
+![UI Screenshot](./assets/UI-03.png)
 
 #### 📸 Mobile Responsive View
-![Mobile Responsive View](./assets/Mobile-UI-Screenshot-02.png)
+![Mobile Responsive View](./assets/Mobile-resposive-dashboard-UI.png)
 
 #### 📸 Test Output
-![Test Output](./assets/cargo-test-output-03.png)
+![Test Output](./assets/cargo-test-output-04.png)
 
 #### 📸 CI/CD Pipeline
 ![CI/CD Pipeline running](./assets/Screenshot-of-cicd-03.png)
