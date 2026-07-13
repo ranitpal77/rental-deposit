@@ -459,8 +459,8 @@ All user feedback was collected via a [Google Form](https://forms.gle/1s3Abvi6QE
 
 ## Demo Videos
 
-- [Demo 01 — Tenant & Landlord mutual release](./assets/demo-video-01.mp4)
-- [Demo 02 — Full arbitration flow](./assets/demo-video-02.mp4)
+- [Demo 01 — Tenant & Landlord mutual release](https://drive.google.com/file/d/1j06Pp7PkYbWX1ZUllnkL9d6fhi0bkG8-/view?usp=sharing)
+- [Demo 02 — Full arbitration flow](https://drive.google.com/file/d/1eEotUZcd0m8-GPFs7fa5r2UxEeT-Y46h/view?usp=sharing)
 
 ---
 

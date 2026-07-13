@@ -1552,10 +1552,10 @@ body.light-theme .footer-bottom {
 
   .hamburger-btn {
     display: flex !important;
-    flex-direction: column;
-    justify-content: space-between;
-    width: 20px;
-    height: 14px;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
     background: none;
     border: none;
     cursor: pointer;
@@ -1563,27 +1563,7 @@ body.light-theme .footer-bottom {
     margin-left: 0.25rem;
     z-index: 1001;
     flex-shrink: 0;
-  }
-
-  .hamburger-btn span {
-    width: 100%;
-    height: 2px;
-    background-color: var(--text-primary);
-    border-radius: 2px;
-    transition: all var(--transition-fast);
-  }
-
-  /* Hamburger to X cross animation */
-  .hamburger-btn.open span:nth-child(1) {
-    transform: translateY(6px) rotate(45deg);
-  }
-
-  .hamburger-btn.open span:nth-child(2) {
-    opacity: 0;
-  }
-
-  .hamburger-btn.open span:nth-child(3) {
-    transform: translateY(-6px) rotate(-45deg);
+    color: var(--text-primary);
   }
 
   /* Mobile Floating Dropdown Menu (Outside Navbar in DOM) */

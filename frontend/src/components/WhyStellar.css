@@ -129,7 +129,7 @@
 .why-code-body {
   display: flex;
   padding: 1.5rem 1.25rem;
-  overflow: hidden;
+  overflow-x: auto;
   gap: 1rem;
 }
 
@@ -151,8 +151,7 @@
   line-height: 1.6;
   color: #D1D2D6;
   text-align: left;
-  white-space: pre-wrap;
-  word-break: break-word;
+  white-space: pre;
 }
 
 @media (max-width: 900px) {

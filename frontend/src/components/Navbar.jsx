@@ -257,14 +257,35 @@ const Navbar = ({
 
         {/* Mobile Hamburger toggle button */}
         <div className="navbar-mobile-toggle">
+          {userAddress ? (
+            <div className="wallet-connected-wrapper" style={{ marginRight: '0.75rem', padding: '0.3rem 0.6rem', border: '1px solid var(--border-color)', borderRadius: '100px', display: 'flex', alignItems: 'center' }}>
+              <span className="wallet-address-pill" style={{ fontSize: '0.65rem', fontWeight: 600 }}>
+                {(() => {
+                  const addrStr = typeof userAddress === 'object' ? userAddress.address : userAddress;
+                  return addrStr ? `${addrStr.slice(0, 4)}...${addrStr.slice(-3)}` : '--';
+                })()}
+              </span>
+            </div>
+          ) : (
+            <button 
+              onClick={handleConnectWalletClick} 
+              className="btn btn-primary connect-wallet-btn" 
+              style={{ marginRight: '0.75rem', padding: '0.4rem 0.85rem', fontSize: '0.7rem', height: 'auto', minHeight: 'unset' }}
+            >
+              CONNECT WALLET
+            </button>
+          )}
+
           <button 
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
-            className={`hamburger-btn ${isMobileMenuOpen ? 'open' : ''}`}
+            className="hamburger-btn"
             aria-label="Toggle menu"
           >
-            <span className="hamburger-line"></span>
-            <span className="hamburger-line"></span>
-            <span className="hamburger-line"></span>
+            <svg width="20" height="16" viewBox="0 0 20 16" fill="none" xmlns="http://www.w3.org/2000/svg" className="hamburger-svg">
+              <rect y="1" width="20" height="2" rx="1" fill="currentColor"/>
+              <rect y="7" width="20" height="2" rx="1" fill="currentColor"/>
+              <rect y="13" width="20" height="2" rx="1" fill="currentColor"/>
+            </svg>
           </button>
         </div>
 
