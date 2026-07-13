@@ -504,10 +504,19 @@
   font-size: 0.82rem;
   line-height: 1.6;
   color: #D1D2D6;
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+}
+
+/* Custom high-contrast selection styling inside the Docs code block only */
+.doc-code-block pre::selection,
+.doc-code-block pre *::selection,
+.doc-code-block code::selection,
+.doc-code-block code *::selection {
+  background-color: #2680eb !important;
+  color: #ffffff !important;
 }
 
 /* Use cases cards */

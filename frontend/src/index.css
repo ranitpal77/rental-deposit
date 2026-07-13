@@ -2072,3 +2072,16 @@ body.light-theme .toast-close:hover {
   background-color: #E2E8F0 !important;
   color: #0F1115 !important;
 }
+
+/* Ensure high contrast selection styling inside all dark containers in both light and dark themes */
+.principle-dark::selection,
+.principle-dark *::selection,
+.code-block-pre::selection,
+.code-block-pre *::selection,
+pre::selection,
+pre *::selection,
+code::selection,
+code *::selection {
+  background-color: #E2E8F0 !important;
+  color: #0F1115 !important;
+}

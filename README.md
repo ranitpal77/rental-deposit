@@ -441,7 +441,7 @@ All user feedback was collected via a [Google Form](https://forms.gle/1s3Abvi6QE
 ![UI Screenshot](./assets/UI-03.png)
 
 #### 📸 Mobile Responsive View
-![Mobile Responsive View](./assets/Mobile-resposive-dashboard-UI.png)
+![Mobile Responsive Dashboard View](./assets/mobile-responsive-dashboard-UI.png)
 
 #### 📸 Test Output
 ![Test Output](./assets/cargo-test-output-04.png)
