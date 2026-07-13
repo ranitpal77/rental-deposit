@@ -1,5 +1,6 @@
 import React from 'react';
 import './ExploreMore.css';
+import { handleLinkClick } from '../utils/navigation';
 
 const PRINCIPLES = [
   {
@@ -64,21 +65,31 @@ const ExploreMore = ({ onNavigate }) => {
                     <span className="principle-dark-eyebrow">Core principle</span>
                     <p className="principle-dark-text">{p.principle}</p>
                   </div>
-                  <button
-                    className="principle-dark-btn"
-                    onClick={() => {
-                      if (p.cta.label === 'Features') {
-                        const el = document.getElementById('features');
-                        if (el) {
-                          el.scrollIntoView({ behavior: 'smooth' });
+                  {p.cta.path.startsWith('#') ? (
+                    <a
+                      href={`/${p.cta.path}`}
+                      className="principle-dark-btn"
+                      onClick={(e) => {
+                        if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+                          e.preventDefault();
+                          const el = document.getElementById(p.cta.path.substring(1));
+                          if (el) {
+                            el.scrollIntoView({ behavior: 'smooth' });
+                          }
                         }
-                      } else {
-                        onNavigate && onNavigate(p.cta.path);
-                      }
-                    }}
-                  >
-                    {p.cta.label}
-                  </button>
+                      }}
+                    >
+                      {p.cta.label}
+                    </a>
+                  ) : (
+                    <a
+                      href={p.cta.path}
+                      className="principle-dark-btn"
+                      onClick={(e) => handleLinkClick(e, p.cta.path, onNavigate)}
+                    >
+                      {p.cta.label}
+                    </a>
+                  )}
                 </aside>
               </div>
             </article>

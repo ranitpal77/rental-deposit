@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './Documentation.css';
+import { handleLinkClick } from '../utils/navigation';
 
 const Documentation = ({ onNavigate }) => {
   const [activeSection, setActiveSection] = useState('abstract');
@@ -20,9 +21,8 @@ const Documentation = ({ onNavigate }) => {
   };
 
   const handleExploreMoreClick = (e) => {
-    e.preventDefault();
-    if (onNavigate) {
-      onNavigate('/');
+    handleLinkClick(e, '/', onNavigate);
+    if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
       setTimeout(() => {
         const el = document.getElementById('explore-more');
         if (el) {

@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import './Workspace.css';
+import { handleLinkClick } from '../utils/navigation';
 
 const DEFAULT_CONTRACT_ID = 'CBFMZXLLIW2JUUWOC4ZQEJWRQCIGJEY34SHCVUDVIZ7NFVONF3G63LO6';
 
@@ -78,6 +79,19 @@ const Workspace = ({
 }) => {
   const isDashboardPage = currentPath.toLowerCase() === '/dashboard';
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const leaseId = params.get('leaseId');
+    if (leaseId && currentPath.toLowerCase() === '/workspace') {
+      setActiveTab('manage');
+      setSearchLeaseId(leaseId);
+      // Wait a tiny bit for state sync
+      setTimeout(() => {
+        handleLoadEscrow(leaseId);
+      }, 100);
+    }
+  }, [currentPath]);
+
   if (isDashboardPage) {
     return (
       <div className="page-section">
@@ -129,14 +143,19 @@ const Workspace = ({
                 }
 
                 return activeEscrows.map(escrow => (
-                  <div
+                  <a
                     key={escrow.leaseId}
+                    href={`/workspace?leaseId=${escrow.leaseId}`}
                     className="escrow-row"
-                    onClick={() => {
-                      onNavigate('/workspace');
-                      setActiveTab('manage');
-                      setSearchLeaseId(escrow.leaseId);
-                      handleLoadEscrow(escrow.leaseId);
+                    style={{ textDecoration: 'none', display: 'flex', color: 'inherit' }}
+                    onClick={(e) => {
+                      if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+                        e.preventDefault();
+                        onNavigate('/workspace');
+                        setActiveTab('manage');
+                        setSearchLeaseId(escrow.leaseId);
+                        handleLoadEscrow(escrow.leaseId);
+                      }
                     }}
                   >
                     <div className="escrow-row-meta">
@@ -150,7 +169,7 @@ const Workspace = ({
                       <span className="escrow-row-amount address-mono">{escrow.amount}</span>
                       <span className={`badge-status ${getStatusBadgeClass(escrow.status)}`}>{getStatusLabel(escrow.status)}</span>
                     </div>
-                  </div>
+                  </a>
                 ));
               })()}
             </div>
@@ -967,9 +986,14 @@ const Workspace = ({
                           <span style={{ fontWeight: 700 }}>ESCROW RELEASED & RESOLVED SUCCESSFULLY</span>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '0.5rem' }}>
                             <p style={{ margin: 0, fontSize: '0.85rem' }}>Funds sent back to accounts.</p>
-                            <button onClick={() => onNavigate('/dashboard')} className="btn btn-primary pill-btn" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', border: 'none', fontWeight: 600 }}>
+                            <a 
+                              href="/dashboard" 
+                              onClick={(e) => handleLinkClick(e, '/dashboard', onNavigate)} 
+                              className="btn btn-primary pill-btn" 
+                              style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none', padding: '0.35rem 0.75rem', fontSize: '0.75rem', border: 'none', fontWeight: 600 }}
+                            >
                               Check Dashboard
-                            </button>
+                            </a>
                           </div>
                         </div>
                       </div>

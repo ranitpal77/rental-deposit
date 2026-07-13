@@ -175,6 +175,10 @@ body.light-theme .nav-link.active:after {
   padding: 0;
 }
 
+a {
+  text-decoration: none;
+}
+
 body {
   background-color: var(--bg-color);
   color: var(--text-primary);

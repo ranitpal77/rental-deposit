@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './Navbar.css';
+import { handleLinkClick } from '../utils/navigation';
 
 const Navbar = ({
   currentPath,
@@ -53,31 +54,34 @@ const Navbar = ({
   }, [currentPath]);
 
   const handleAnchorClick = (e, targetId) => {
-    e.preventDefault();
-    setIsMobileMenuOpen(false);
-    
-    if (currentPath !== '/') {
-      onNavigate('/');
-      setTimeout(() => {
+    if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+      e.preventDefault();
+      setIsMobileMenuOpen(false);
+      
+      if (currentPath !== '/') {
+        onNavigate('/');
+        setTimeout(() => {
+          const el = document.getElementById(targetId);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 100);
+      } else {
         const el = document.getElementById(targetId);
         if (el) {
           el.scrollIntoView({ behavior: 'smooth' });
         }
-      }, 100);
-    } else {
-      const el = document.getElementById(targetId);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth' });
       }
     }
   };
 
   const handleLogoClick = (e) => {
-    e.preventDefault();
-    onNavigate('/');
-    setTimeout(() => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 50);
+    handleLinkClick(e, '/', onNavigate);
+    if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 50);
+    }
   };
 
   // Close mobile menu on click outside
@@ -130,11 +134,12 @@ const Navbar = ({
                 <a 
                   href="/" 
                   onClick={(e) => {
-                    e.preventDefault();
-                    onNavigate('/');
-                    setTimeout(() => {
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }, 50);
+                    handleLinkClick(e, '/', onNavigate);
+                    if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+                      setTimeout(() => {
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }, 50);
+                    }
                   }} 
                   className={`nav-item ${currentPath === '/' && activeSection === 'home' ? 'active' : ''}`}
                 >
@@ -143,7 +148,7 @@ const Navbar = ({
               </li>
               <li>
                 <a 
-                  href="#features" 
+                  href="/#features" 
                   onClick={(e) => handleAnchorClick(e, 'features')} 
                   className={`nav-item ${activeSection === 'features' && currentPath === '/' ? 'active' : ''}`}
                 >
@@ -152,7 +157,7 @@ const Navbar = ({
               </li>
               <li>
                 <a 
-                  href="#how-it-works" 
+                  href="/#how-it-works" 
                   onClick={(e) => handleAnchorClick(e, 'how-it-works')} 
                   className={`nav-item ${activeSection === 'how-it-works' && currentPath === '/' ? 'active' : ''}`}
                 >
@@ -161,7 +166,7 @@ const Navbar = ({
               </li>
               <li>
                 <a 
-                  href="#why-stellar" 
+                  href="/#why-stellar" 
                   onClick={(e) => handleAnchorClick(e, 'why-stellar')} 
                   className={`nav-item ${activeSection === 'why-stellar' && currentPath === '/' ? 'active' : ''}`}
                 >
@@ -169,20 +174,22 @@ const Navbar = ({
                 </a>
               </li>
               <li>
-                <button 
-                  onClick={() => onNavigate('/workspace')} 
+                <a 
+                  href="/workspace"
+                  onClick={(e) => handleLinkClick(e, '/workspace', onNavigate)} 
                   className={`nav-item nav-btn-link ${currentPath.toLowerCase() === '/workspace' ? 'active' : ''}`}
                 >
                   WORKSPACE
-                </button>
+                </a>
               </li>
               <li>
-                <button 
-                  onClick={() => onNavigate('/docs')} 
+                <a 
+                  href="/docs"
+                  onClick={(e) => handleLinkClick(e, '/docs', onNavigate)} 
                   className={`nav-item nav-btn-link ${currentPath.toLowerCase() === '/docs' ? 'active' : ''}`}
                 >
                   DOCS
-                </button>
+                </a>
               </li>
               <li className="wallet-btn-item" style={{ marginLeft: '1rem' }}>
                 {userAddress ? (() => {
@@ -208,20 +215,22 @@ const Navbar = ({
             /* WORKSPACE NAVIGATION MODE */
             <ul className="nav-links-list workspace-nav-list">
               <li>
-                <button 
-                  onClick={() => onNavigate('/workspace')} 
+                <a 
+                  href="/workspace"
+                  onClick={(e) => handleLinkClick(e, '/workspace', onNavigate)} 
                   className={`nav-item nav-btn-link ${currentPath.toLowerCase() === '/workspace' ? 'active' : ''}`}
                 >
                   WORKSPACE
-                </button>
+                </a>
               </li>
               <li>
-                <button 
-                  onClick={() => onNavigate('/dashboard')} 
+                <a 
+                  href="/dashboard"
+                  onClick={(e) => handleLinkClick(e, '/dashboard', onNavigate)} 
                   className={`nav-item nav-btn-link ${currentPath.toLowerCase() === '/dashboard' ? 'active' : ''}`}
                 >
                   DASHBOARD
-                </button>
+                </a>
               </li>
               <li className="wallet-btn-item">
                 {userAddress ? (() => {
@@ -308,7 +317,7 @@ const Navbar = ({
                 </li>
                 <li>
                   <a 
-                    href="#how-it-works" 
+                    href="/#how-it-works" 
                     onClick={(e) => handleAnchorClick(e, 'how-it-works')} 
                     className={`mobile-nav-item ${activeSection === 'how-it-works' && currentPath === '/' ? 'active' : ''}`}
                   >
@@ -317,7 +326,7 @@ const Navbar = ({
                 </li>
                 <li>
                   <a 
-                    href="#why-stellar" 
+                    href="/#why-stellar" 
                     onClick={(e) => handleAnchorClick(e, 'why-stellar')} 
                     className={`mobile-nav-item ${activeSection === 'why-stellar' && currentPath === '/' ? 'active' : ''}`}
                   >
@@ -325,26 +334,32 @@ const Navbar = ({
                   </a>
                 </li>
                 <li>
-                  <button 
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      onNavigate('/workspace');
+                  <a 
+                    href="/workspace"
+                    onClick={(e) => {
+                      handleLinkClick(e, '/workspace', onNavigate);
+                      if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+                        setIsMobileMenuOpen(false);
+                      }
                     }} 
                     className={`mobile-nav-item ${currentPath.toLowerCase() === '/workspace' ? 'active' : ''}`}
                   >
                     WORKSPACE
-                  </button>
+                  </a>
                 </li>
                 <li>
-                  <button 
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      onNavigate('/docs');
+                  <a 
+                    href="/docs"
+                    onClick={(e) => {
+                      handleLinkClick(e, '/docs', onNavigate);
+                      if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+                        setIsMobileMenuOpen(false);
+                      }
                     }} 
                     className={`mobile-nav-item ${currentPath.toLowerCase() === '/docs' ? 'active' : ''}`}
                   >
                     DOCS
-                  </button>
+                  </a>
                 </li>
                 <li className="mobile-wallet-btn-li">
                   {userAddress ? (
@@ -361,26 +376,32 @@ const Navbar = ({
             ) : (
               <>
                 <li>
-                  <button 
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      onNavigate('/workspace');
+                  <a 
+                    href="/workspace"
+                    onClick={(e) => {
+                      handleLinkClick(e, '/workspace', onNavigate);
+                      if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+                        setIsMobileMenuOpen(false);
+                      }
                     }} 
                     className={`mobile-nav-item ${currentPath.toLowerCase() === '/workspace' ? 'active' : ''}`}
                   >
                     WORKSPACE
-                  </button>
+                  </a>
                 </li>
                 <li>
-                  <button 
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      onNavigate('/dashboard');
+                  <a 
+                    href="/dashboard"
+                    onClick={(e) => {
+                      handleLinkClick(e, '/dashboard', onNavigate);
+                      if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+                        setIsMobileMenuOpen(false);
+                      }
                     }} 
                     className={`mobile-nav-item ${currentPath.toLowerCase() === '/dashboard' ? 'active' : ''}`}
                   >
                     DASHBOARD
-                  </button>
+                  </a>
                 </li>
                 <li className="mobile-wallet-btn-li">
                   {userAddress ? (

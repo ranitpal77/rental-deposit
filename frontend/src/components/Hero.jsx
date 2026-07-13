@@ -1,5 +1,6 @@
 import React from 'react';
 import './Hero.css';
+import { handleLinkClick } from '../utils/navigation';
 
 const Hero = ({ onNavigate }) => {
   return (
@@ -23,24 +24,28 @@ const Hero = ({ onNavigate }) => {
             </p>
 
             <div className="hero-actions">
-              <button
-                onClick={() => onNavigate('/workspace')}
+              <a
+                href="/workspace"
+                onClick={(e) => handleLinkClick(e, '/workspace', onNavigate)}
                 className="hero-btn hero-btn-primary"
               >
                 Open workspace
-              </button>
-              <button
+              </a>
+              <a
+                href="#explore-more"
                 onClick={(e) => {
-                  e.preventDefault();
-                  const el = document.getElementById('explore-more');
-                  if (el) {
-                    el.scrollIntoView({ behavior: 'smooth' });
+                  if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+                    e.preventDefault();
+                    const el = document.getElementById('explore-more');
+                    if (el) {
+                      el.scrollIntoView({ behavior: 'smooth' });
+                    }
                   }
                 }}
                 className="hero-btn hero-btn-secondary"
               >
                 Explore more
-              </button>
+              </a>
             </div>
           </div>
 
