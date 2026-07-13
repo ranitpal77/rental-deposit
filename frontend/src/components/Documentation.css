@@ -1,10 +1,10 @@
 .docs-layout {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: 260px minmax(0, 1fr);
   gap: 4rem;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 8rem 2rem 4rem 2rem;
+  padding: 3rem 2rem 2rem 2rem;
   position: relative;
   text-align: left;
 }
@@ -94,6 +94,7 @@
   display: flex;
   flex-direction: column;
   gap: 4.5rem;
+  min-width: 0; /* Allow content (code blocks, tables) to shrink & scroll instead of overflowing the page */
 }
 
 /* Docs Header */
@@ -606,14 +607,22 @@
   margin: 0;
 }
 
-/* Footer Navigation Buttons at Bottom of Docs */
+/* Footer Navigation Buttons at Bottom of Docs — outside the grid layout container */
+.docs-footer-buttons-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem 4rem 2rem;
+  box-sizing: border-box;
+}
+
 .docs-footer-buttons {
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
-  margin-top: 3.5rem;
+  margin-top: 1rem;
   padding-top: 1.5rem;
   border-top: 1px solid var(--border-color);
+  margin-left: 324px; /* aligned with the right panel column: 260px sidebar + 4rem (64px) gap */
 }
 
 .docs-footer-btn {
@@ -623,6 +632,9 @@
   align-items: center;
   gap: 0.35rem;
   text-decoration: none;
+  height: 48px;
+  border-radius: 24px !important;
+  box-sizing: border-box;
 }
 
 /* Responsiveness */
@@ -650,21 +662,29 @@
     justify-content: center;
     flex-direction: column;
     gap: 0.75rem;
+    margin-left: 0;
+    align-items: center;
   }
 
   .docs-footer-btn {
     width: 100%;
+    max-width: 320px;
     justify-content: center;
+    box-sizing: border-box;
+    height: 48px;
+    border-radius: 24px !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
   }
 }
 
 @media (max-width: 768px) {
   .docs-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 2rem;
-    padding-top: 6rem;
+    padding-top: 3.5rem;
   }
-  
+
   .docs-left-panel {
     position: static;
   }
@@ -683,4 +703,78 @@
     grid-template-columns: 1fr;
     gap: 1rem;
   }
+}
+
+@media (max-width: 600px) {
+  .docs-layout {
+    padding: 3.5rem 1.25rem 2rem 1.25rem;
+    gap: 1.75rem;
+  }
+
+  .doc-section-heading {
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .doc-section-num {
+    width: 28px;
+    height: 28px;
+    font-size: 0.85rem;
+  }
+
+  .doc-section-heading h2 {
+    font-size: 1.2rem;
+  }
+
+  .doc-sub-h {
+    font-size: 1rem;
+  }
+
+  .doc-p,
+  .doc-banner {
+    font-size: 0.9rem;
+  }
+
+  .doc-banner {
+    padding: 1rem 1.15rem;
+  }
+
+  .diagram-container {
+    padding: 1.75rem 1.25rem;
+  }
+
+  /* Code block: comfortable padding + smoother horizontal scroll on phones */
+  .doc-code-block {
+    padding: 1.25rem 1.25rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .doc-code-block pre,
+  .doc-code-block code {
+    font-size: 0.76rem;
+  }
+
+  .doc-table th,
+  .doc-table td {
+    padding: 0.85rem 1rem;
+    font-size: 0.82rem;
+  }
+
+  .docs-footer-buttons-wrapper {
+    padding: 0 1.25rem 3rem 1.25rem;
+  }
+}
+
+/* Dark Mode overrides for GitHub footer button */
+body:not(.light-theme) .docs-footer-buttons .docs-footer-btn.btn-secondary {
+  background-color: var(--surface-color) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  transition: transform var(--transition-fast), border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+body:not(.light-theme) .docs-footer-buttons .docs-footer-btn.btn-secondary:hover {
+  border-color: var(--border-color-hover) !important;
+  background-color: var(--surface-color) !important;
+  transform: translateY(-1px);
 }

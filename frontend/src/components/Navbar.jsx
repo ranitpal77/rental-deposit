@@ -83,6 +83,10 @@ const Navbar = ({
   // Close mobile menu on click outside
   useEffect(() => {
     const handleClickOutside = (e) => {
+      // Do not close if clicking the theme toggle button
+      if (e.target.closest('.theme-toggle-btn')) {
+        return;
+      }
       if (isMobileMenuOpen && mobileMenuRef.current && !mobileMenuRef.current.contains(e.target)) {
         setIsMobileMenuOpen(false);
       }
@@ -107,13 +111,12 @@ const Navbar = ({
   };
 
   return (
-    <header className="navbar">
+    <header className={`navbar ${isMobileMenuOpen ? 'menu-open' : ''}`}>
       <div className="navbar-container">
         
         {/* Left Side: Logo */}
         <div className="navbar-logo-area">
           <a href="/" onClick={handleLogoClick} className="navbar-brand">
-            <img src="/shield.svg" alt="DepoShield Logo" className="brand-logo-img" />
             DEPOSHIELD
           </a>
         </div>
@@ -262,8 +265,17 @@ const Navbar = ({
       <div className={`mobile-nav-overlay ${isMobileMenuOpen ? 'open' : ''}`}>
         <div className={`mobile-nav-drawer ${isMobileMenuOpen ? 'open' : ''}`} ref={mobileMenuRef}>
           <div className="mobile-drawer-header">
-            <img src="/shield.svg" alt="DepoShield Logo" className="brand-logo-img" />
             DEPOSHIELD
+            <button 
+              className="mobile-drawer-close" 
+              onClick={() => setIsMobileMenuOpen(false)}
+              aria-label="Close menu"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
           </div>
 
           <ul className="mobile-links-list">
@@ -336,11 +348,11 @@ const Navbar = ({
                 </li>
                 <li className="mobile-wallet-btn-li">
                   {userAddress ? (
-                    <button onClick={() => { setIsMobileMenuOpen(false); handleDisconnectWallet(); }} className="btn btn-secondary btn-full">
+                    <button onClick={() => { setIsMobileMenuOpen(false); handleDisconnectWallet(); }} className="btn btn-secondary pill-btn btn-full">
                       DISCONNECT WALLET
                     </button>
                   ) : (
-                    <button onClick={() => { setIsMobileMenuOpen(false); handleConnectWalletClick(); }} className="btn btn-primary btn-full">
+                    <button onClick={() => { setIsMobileMenuOpen(false); handleConnectWalletClick(); }} className="btn btn-primary pill-btn btn-full">
                       CONNECT WALLET
                     </button>
                   )}
@@ -372,11 +384,11 @@ const Navbar = ({
                 </li>
                 <li className="mobile-wallet-btn-li">
                   {userAddress ? (
-                    <button onClick={() => { setIsMobileMenuOpen(false); handleDisconnectWallet(); }} className="btn btn-secondary btn-full">
+                    <button onClick={() => { setIsMobileMenuOpen(false); handleDisconnectWallet(); }} className="btn btn-secondary pill-btn btn-full">
                       DISCONNECT WALLET
                     </button>
                   ) : (
-                    <button onClick={() => { setIsMobileMenuOpen(false); handleConnectWallet(); }} className="btn btn-primary btn-full">
+                    <button onClick={() => { setIsMobileMenuOpen(false); handleConnectWallet(); }} className="btn btn-primary pill-btn btn-full">
                       CONNECT WALLET
                     </button>
                   )}

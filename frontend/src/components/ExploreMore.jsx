@@ -11,7 +11,7 @@ const PRINCIPLES = [
       ['Matched-split release', 'Both sides must agree']
     ],
     principle: 'A deposit should never sit in one party’s account.',
-    cta: { label: 'Open workspace', path: '/workspace' }
+    cta: { label: 'Features', path: '#features' }
   },
   {
     tag: 'Auditable settlement',
@@ -66,7 +66,16 @@ const ExploreMore = ({ onNavigate }) => {
                   </div>
                   <button
                     className="principle-dark-btn"
-                    onClick={() => onNavigate && onNavigate(p.cta.path)}
+                    onClick={() => {
+                      if (p.cta.label === 'Features') {
+                        const el = document.getElementById('features');
+                        if (el) {
+                          el.scrollIntoView({ behavior: 'smooth' });
+                        }
+                      } else {
+                        onNavigate && onNavigate(p.cta.path);
+                      }
+                    }}
                   >
                     {p.cta.label}
                   </button>

@@ -246,25 +246,56 @@ function App() {
   // Toast notifications State
   const [toasts, setToasts] = useState([]);
 
-  // Toast Notification Helper
-  const showToast = useCallback((message, type = 'success', txHash = null) => {
-    const id = Date.now() + Math.random();
-    setToasts(prev => [...prev, { id, message, type, txHash }]);
+  // Default title per notification type
+  const getToastTitle = (type) => {
+    switch (type) {
+      case 'success': return 'Success';
+      case 'error': return 'Something went wrong';
+      case 'warning': return 'Heads up';
+      case 'info': return 'Notice';
+      default: return 'Notification';
+    }
+  };
+
+  // Dismiss a toast with an exit animation before removing it
+  const dismissToast = useCallback((id) => {
+    setToasts(prev => prev.map(t => (t.id === id ? { ...t, leaving: true } : t)));
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
-    }, 4000);
+    }, 350);
   }, []);
 
-  // Theme Sync on Mount
+  // Toast Notification Helper
+  const showToast = useCallback((message, type = 'success', txHash = null, title = null) => {
+    const id = Date.now() + Math.random();
+    // Mount hidden (entered:false) so the enter transition can play on the next frame
+    setToasts(prev => [...prev, { id, message, type, txHash, title: title || getToastTitle(type), leaving: false, entered: false }]);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setToasts(prev => prev.map(t => (t.id === id ? { ...t, entered: true } : t)));
+      });
+    });
+    setTimeout(() => {
+      dismissToast(id);
+    }, 5000);
+  }, [dismissToast]);
+
+  // Theme Sync on Mount — restore persisted preference (default: light)
   useEffect(() => {
-    localStorage.setItem('deposhield_theme', 'light');
-    setTheme('light');
-    document.body.classList.add('light-theme');
+    const stored = localStorage.getItem('deposhield_theme');
+    const initialTheme = stored === 'dark' ? 'dark' : 'light';
+    setTheme(initialTheme);
+    document.body.classList.toggle('light-theme', initialTheme === 'light');
   }, []);
 
-  const handleToggleTheme = () => {
-    // Light mode only
-  };
+  const handleToggleTheme = useCallback(() => {
+    setTheme(prev => {
+      const next = prev === 'light' ? 'dark' : 'light';
+      localStorage.setItem('deposhield_theme', next);
+      document.body.classList.toggle('light-theme', next === 'light');
+      return next;
+    });
+  }, []);
 
   // Wallet Connection helper
   const updateWalletBalance = useCallback(async (address) => {
@@ -294,6 +325,17 @@ function App() {
   }, []);
 
   const handleConnectWallet = useCallback(async () => {
+    // Check if mock mode is requested via query param
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('mock') === 'true' || window.location.search.includes('mock=true')) {
+      const mockAddress = 'GB5RQIXLSAJD32EUJNIIFD23TUB74J3N54OKQUJXYODRPLR7EOKQNIWQ'; // Alan
+      setUserAddress(mockAddress);
+      localStorage.setItem('deposhield_connected_address', mockAddress);
+      showToast('Simulated Freighter wallet connected successfully.', 'success', null, 'Wallet Connected');
+      updateWalletBalance(mockAddress);
+      return;
+    }
+
     const connectedResult = await isConnected();
     if (!connectedResult || !connectedResult.isConnected) {
       showToast('Please install the Freighter wallet extension to use this application.', 'info');
@@ -315,14 +357,14 @@ function App() {
       if (address) {
         setUserAddress(address);
         localStorage.setItem('deposhield_connected_address', address);
-        showToast('Wallet connected successfully!', 'success');
+        showToast('Your Freighter wallet is now connected.', 'success', null, 'Wallet Connected');
         updateWalletBalance(address);
       } else {
         throw new Error('No address returned from Freighter');
       }
     } catch (err) {
       console.error('Wallet connection rejected:', err);
-      showToast('Failed to connect to Freighter wallet.', 'error');
+      showToast('Could not connect to your Freighter wallet.', 'error', null, 'Connection Failed');
     }
   }, [updateWalletBalance, showToast]);
 
@@ -330,7 +372,7 @@ function App() {
     setUserAddress(null);
     setWalletBalance('-- XLM');
     localStorage.removeItem('deposhield_connected_address');
-    showToast('Wallet disconnected', 'info');
+    showToast('Your wallet has been disconnected.', 'info', null, 'Wallet Disconnected');
   }, [showToast]);
 
   // Load wallet on mount
@@ -501,30 +543,59 @@ function App() {
       
       setDashboardEscrows(escrows);
 
-      // Compute metrics
+      // Compute metrics based on connected wallet
       let tvl = 0;
       let activeCount = 0;
       let resolvedCount = 0;
       let disputedCount = 0;
       let resolvedVol = 0;
 
-      escrows.forEach(escrow => {
-        const status = String(escrow.status || '').toLowerCase();
-        const amount = parseFloat(escrow.amount) || 0;
-        
-        if (status === 'active' || status === '1') {
-          activeCount++;
-          tvl += amount;
-        } else if (status === 'disputed' || status === '2') {
-          disputedCount++;
-          tvl += amount;
-        } else if (status === 'released' || status === 'released (disputed)' || status === 'resolved' || status === '3') {
-          resolvedCount++;
-          resolvedVol += amount;
-        } else if (status === 'created' || status === '0') {
-          activeCount++;
-        }
-      });
+      if (userAddress) {
+        escrows.forEach(escrow => {
+          const statusLower = String(escrow.status || '').toLowerCase();
+          const amount = parseFloat(escrow.amount) || 0;
+          
+          // Check role
+          const isTenant = escrow.tenant === userAddress;
+          const isLandlord = escrow.landlord === userAddress;
+          const isArbitrator = escrow.arbitrator === userAddress;
+          const isMember = isTenant || isLandlord || isArbitrator;
+
+          if (!isMember) return;
+
+          const isResolved = statusLower === 'released' || statusLower === 'released (disputed)' || statusLower === 'resolved' || statusLower === '3';
+          const hasDisputeEvent = escrow.history && escrow.history.some(h =>
+            String(h.event).toLowerCase().includes('dispute')
+          );
+          const hasHadDispute = statusLower === 'disputed' || statusLower === '2' || statusLower === 'released (disputed)' || statusLower === 'resolved' || hasDisputeEvent;
+
+          if (isResolved) {
+            // For resolved, apply exact display filters
+            let shouldInclude = false;
+            if (isTenant || isLandlord) {
+              shouldInclude = true;
+            } else if (isArbitrator) {
+              const isDisputed = statusLower.includes('disput') || statusLower === 'resolved' || statusLower === '2' || statusLower === '3';
+              shouldInclude = isDisputed || hasDisputeEvent;
+            }
+            
+            if (shouldInclude) {
+              resolvedCount++;
+              resolvedVol += amount;
+              if (hasHadDispute) {
+                disputedCount++;
+              }
+            }
+          } else {
+            // For active/created
+            activeCount++;
+            tvl += amount;
+            if (hasHadDispute) {
+              disputedCount++;
+            }
+          }
+        });
+      }
 
       setMetrics({
         tvl,
@@ -536,7 +607,7 @@ function App() {
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     }
-  }, []);
+  }, [userAddress]);
 
   useEffect(() => {
     loadDashboardEscrows();
@@ -1381,7 +1452,20 @@ function App() {
       <footer className="footer">
         <div className="footer-inner">
           <div className="footer-col brand-col">
-            <div className="footer-brand-title">DEPOSHIELD</div>
+            <a 
+              href="/" 
+              onClick={(e) => {
+                e.preventDefault();
+                navigate('/');
+                setTimeout(() => {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }, 50);
+              }}
+              className="footer-brand-title"
+              style={{ textDecoration: 'none', color: 'inherit', cursor: 'pointer', display: 'block' }}
+            >
+              DEPOSHIELD
+            </a>
             <p className="footer-brand-desc">Decentralized, trustless security deposit escrow built on Stellar and Soroban. Safe, secure, and neutral.</p>
           </div>
           
@@ -1427,45 +1511,84 @@ function App() {
       {/* Web3 Toast Notifications */}
       <div className="toast-container">
         {toasts.map(toast => (
-          <div key={toast.id} className={`toast ${toast.type} show`}>
+          <div key={toast.id} className={`toast ${toast.type} ${toast.leaving ? 'hide' : (toast.entered ? 'show' : '')}`} role="status" aria-live="polite">
             <span className="toast-icon">
               {toast.type === 'success' && (
-                <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                   <polyline points="22 4 12 14.01 9 11.01"></polyline>
                 </svg>
               )}
               {toast.type === 'error' && (
-                <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-error)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                  <line x1="12" y1="9" x2="12" y2="13"></line>
+                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+              )}
+              {toast.type === 'warning' && (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
                   <line x1="12" y1="9" x2="12" y2="13"></line>
                   <line x1="12" y1="17" x2="12.01" y2="17"></line>
                 </svg>
               )}
               {toast.type === 'info' && (
-                <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-info)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10"></circle>
                   <line x1="12" y1="16" x2="12" y2="12"></line>
                   <line x1="12" y1="8" x2="12.01" y2="8"></line>
                 </svg>
               )}
             </span>
-            <span className="toast-message" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              <span>{toast.message}</span>
+            <span className="toast-body">
+              <span className="toast-title">{toast.title}</span>
+              <span className="toast-message-text">{toast.message}</span>
               {toast.txHash && (
-                <a 
+                <a
                   href={`https://stellar.expert/explorer/testnet/tx/${toast.txHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ color: 'var(--color-primary)', textDecoration: 'underline', fontSize: '0.72rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', marginTop: '0.15rem' }}
+                  className="toast-verify-link"
                 >
-                  Verify Transaction &rarr;
+                  Verify Transaction
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: '11px', height: '11px' }}>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                  </svg>
                 </a>
               )}
             </span>
+            <button className="toast-close" onClick={() => dismissToast(toast.id)} aria-label="Dismiss notification">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
           </div>
         ))}
       </div>
+
+      {/* Floating Dark Mode Toggle */}
+      <button
+        type="button"
+        className={`theme-toggle-btn ${theme === 'dark' ? 'is-dark' : 'is-light'}`}
+        onClick={handleToggleTheme}
+        aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+        title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+      >
+        <span className="theme-toggle-icon" aria-hidden="true">
+          {/* Sun (shown in dark mode = tap to go light) */}
+          <svg className="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="4"></circle>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+          </svg>
+          {/* Moon (shown in light mode = tap to go dark) */}
+          <svg className="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </span>
+      </button>
     </>
   );
 }

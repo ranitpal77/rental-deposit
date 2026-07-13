@@ -74,13 +74,12 @@
 
 .hero-btn-primary {
   background-color: var(--ink);
-  color: #FFFFFF;
+  color: var(--bg-color);
   border: 1px solid var(--ink);
 }
 
 .hero-btn-primary:hover {
-  background-color: #23262d;
-  border-color: #23262d;
+  opacity: 0.9;
   transform: translateY(-1px);
   box-shadow: 0 6px 18px rgba(15, 17, 21, 0.14);
 }
@@ -92,7 +91,6 @@
 }
 
 .hero-btn-secondary:hover {
-  background-color: #fff;
   border-color: var(--line-strong);
   transform: translateY(-1px);
 }
@@ -168,9 +166,9 @@
 }
 
 /* ---- Responsive ---- */
-@media (max-width: 900px) {
+@media (max-width: 1080px) {
   .hero-section {
-    padding: 7.5rem 0 4rem 0;
+    padding: 2.5rem 0 4rem 0;
   }
   .hero-grid {
     grid-template-columns: 1fr;
@@ -189,3 +187,4 @@
     width: 100%;
   }
 }
+

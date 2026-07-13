@@ -31,10 +31,19 @@
 
 /* Custom Selection Highlighting */
 ::selection {
+  background-color: #E2E8F0; /* Clean light slate gray background */
+  color: #0F1115;            /* High-contrast dark text */
+}
+::-moz-selection {
+  background-color: #E2E8F0;
+  color: #0F1115;
+}
+
+body.light-theme ::selection {
   background-color: rgba(15, 17, 21, 0.08);
   color: inherit;
 }
-::-moz-selection {
+body.light-theme ::-moz-selection {
   background-color: rgba(15, 17, 21, 0.08);
   color: inherit;
 }
@@ -101,9 +110,7 @@ body.light-theme select:focus {
   border-color: var(--text-primary);
 }
 
-body.light-theme .address-mono {
-  background-color: rgba(0, 0, 0, 0.04);
-}
+
 
 body.light-theme .escrow-row {
   background-color: rgba(0, 0, 0, 0.02);
@@ -482,6 +489,24 @@ input:focus, textarea:focus, select:focus {
 .address-mono {
   font-family: var(--font-mono);
   letter-spacing: -0.02em;
+}
+
+/* Autofill override to keep input styles consistent in both dark and light themes */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+textarea:-webkit-autofill:active,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus,
+select:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--surface-color-light) inset !important;
+  -webkit-text-fill-color: var(--text-primary) !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 /* Buttons */
@@ -1488,8 +1513,8 @@ body.light-theme .footer-bottom {
   display: none !important;
 }
 
-/* Stacking menu inside navbar under 768px (Mobile & Tablet) */
-@media (max-width: 768px) {
+/* Stacking menu inside navbar under 1080px (Mobile & Tablet) */
+@media (max-width: 1080px) {
   .navbar {
     display: flex !important;
     justify-content: space-between !important;
@@ -1703,25 +1728,67 @@ body.light-theme .footer-bottom {
   position: fixed;
   bottom: 2rem;
   right: 2rem;
-  z-index: 1000;
+  z-index: 1500;
   width: 48px;
   height: 48px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  padding: 0;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
   background-color: var(--surface-color-light);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-normal), background-color var(--transition-normal);
 }
 .theme-toggle-btn:hover {
   transform: translateY(-2px);
   border-color: var(--border-color-hover);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.45);
 }
+.theme-toggle-btn:active {
+  transform: translateY(0);
+}
+.theme-toggle-btn:focus-visible {
+  outline: 2px solid var(--color-info);
+  outline-offset: 2px;
+}
+
+/* Icon crossfade / rotate between sun & moon */
+.theme-toggle-icon {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+.theme-toggle-icon svg {
+  position: absolute;
+  inset: 0;
+  width: 20px;
+  height: 20px;
+  transition: opacity var(--transition-normal), transform var(--transition-normal);
+}
+/* Light mode -> show moon (invite to go dark) */
+.theme-toggle-btn.is-light .theme-icon-moon {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+.theme-toggle-btn.is-light .theme-icon-sun {
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.5);
+}
+/* Dark mode -> show sun (invite to go light) */
+.theme-toggle-btn.is-dark .theme-icon-sun {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+.theme-toggle-btn.is-dark .theme-icon-moon {
+  opacity: 0;
+  transform: rotate(90deg) scale(0.5);
+}
+
 body.light-theme .theme-toggle-btn {
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
 }
@@ -1738,111 +1805,216 @@ body.light-theme .theme-toggle-btn:hover {
   }
 }
 
-/* Toast Notification Styles */
+/* Smooth global theme transition */
+body,
+.bento-card,
+.card,
+.navbar,
+.footer,
+input, textarea, select {
+  transition: background-color var(--transition-normal), border-color var(--transition-normal), color var(--transition-normal);
+}
+@media (prefers-reduced-motion: reduce) {
+  body, .bento-card, .card, .navbar, .footer,
+  input, textarea, select,
+  .theme-toggle-icon svg {
+    transition: none;
+  }
+}
+
+/* ============================================================
+   Toast Notifications — Deposhield glass-bento system
+   ============================================================ */
 .toast-container {
   position: fixed;
   bottom: 2rem;
   left: 2rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.85rem;
   z-index: 2000;
   pointer-events: none;
+  width: min(400px, calc(100vw - 4rem));
 }
 
 .toast {
   pointer-events: auto;
-  background: rgba(20, 20, 21, 0.75) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 16px !important;
-  padding: 1rem 1.25rem !important;
-  color: var(--text-primary) !important;
-  font-family: var(--font-sans) !important;
-  font-size: 0.88rem !important;
-  font-weight: 500 !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 0.85rem !important;
-  min-width: 340px !important;
-  max-width: 480px !important;
+  position: relative;
+  background: rgba(20, 20, 21, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  padding: 1rem 1.1rem;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  width: 100%;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
   opacity: 0;
-  transform: translateY(20px);
-  transition: opacity var(--transition-normal), transform var(--transition-normal);
-  line-height: 1.4 !important;
+  transform: translateX(-120%);
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+
+
+/* Enter / exit animation states */
 .toast.show {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateX(0);
+}
+.toast.hide {
+  opacity: 0;
+  transform: translateX(-120%);
 }
 
-.toast.success {
-  border-left: 4px solid var(--color-success) !important;
-  background: rgba(10, 25, 15, 0.75) !important;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), 0 0 15px rgba(46, 213, 115, 0.08) !important;
-}
-
-.toast.error {
-  border-left: 4px solid var(--color-error) !important;
-  background: rgba(25, 10, 15, 0.75) !important;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), 0 0 15px rgba(255, 71, 87, 0.08) !important;
-}
-
-.toast.info {
-  border-left: 4px solid var(--color-info) !important;
-  background: rgba(10, 15, 25, 0.75) !important;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), 0 0 15px rgba(30, 144, 255, 0.08) !important;
-}
-
+/* Colored, rounded icon tile */
 .toast-icon {
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--surface-color-light);
+  border: 1px solid var(--border-color);
+  margin-top: 0.05rem;
 }
-
 .toast-icon svg {
   width: 18px;
   height: 18px;
 }
 
+/* Text block */
+.toast-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1;
+  padding-top: 0.05rem;
+}
+.toast-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+  color: var(--text-primary);
+}
+.toast-message-text {
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
+/* Verify-transaction chip */
+.toast-verify-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  align-self: flex-start;
+  margin-top: 0.5rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  color: var(--text-primary);
+  background: var(--surface-color-light);
+  border: 1px solid var(--border-color);
+  transition: border-color var(--transition-fast), background-color var(--transition-fast), transform var(--transition-fast);
+}
+.toast-verify-link:hover {
+  border-color: var(--border-color-hover);
+  background: rgba(255, 255, 255, 0.04);
+  transform: translateY(-1px);
+}
+
+/* Dismiss button */
+.toast-close {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+.toast-close:hover {
+  color: var(--text-primary);
+  background: var(--surface-color-light);
+}
+.toast-close svg {
+  width: 13px;
+  height: 13px;
+}
+
+
+
+.toast.success .toast-icon {
+  background: var(--color-success-bg);
+  border-color: rgba(0, 230, 118, 0.25);
+  color: var(--color-success);
+}
+.toast.error .toast-icon {
+  background: var(--color-error-bg);
+  border-color: rgba(255, 23, 68, 0.25);
+  color: var(--color-error);
+}
+.toast.info .toast-icon {
+  background: rgba(41, 121, 255, 0.08);
+  border-color: rgba(41, 121, 255, 0.25);
+  color: var(--color-info);
+}
+.toast.warning .toast-icon {
+  background: var(--color-pending-bg);
+  border-color: rgba(255, 196, 0, 0.25);
+  color: var(--color-pending);
+}
+
+/* Light theme */
 body.light-theme .toast {
-  background: rgba(255, 255, 255, 0.8) !important;
-  color: var(--text-primary) !important;
-  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 16px 40px rgba(15, 17, 21, 0.1), 0 2px 8px rgba(15, 17, 21, 0.04);
 }
-
-body.light-theme .toast.success {
-  border-left: 4px solid var(--color-success) !important;
-  background: rgba(235, 253, 242, 0.85) !important;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06), 0 0 12px rgba(46, 213, 115, 0.04) !important;
+body.light-theme .toast-verify-link:hover {
+  background: #F1F3F5;
 }
-
-body.light-theme .toast.error {
-  border-left: 4px solid var(--color-error) !important;
-  background: rgba(255, 238, 240, 0.85) !important;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06), 0 0 12px rgba(255, 71, 87, 0.04) !important;
-}
-
-body.light-theme .toast.info {
-  border-left: 4px solid var(--color-info) !important;
-  background: rgba(235, 245, 255, 0.85) !important;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06), 0 0 12px rgba(30, 144, 255, 0.04) !important;
+body.light-theme .toast-close:hover {
+  background: rgba(0, 0, 0, 0.04);
 }
 
 @media (max-width: 600px) {
   .toast-container {
     left: 1rem;
     right: 1rem;
-    bottom: 1.5rem;
+    /* Sit above the floating theme toggle so they never overlap */
+    bottom: 5rem;
+    width: auto;
   }
-  
+}
+@media (prefers-reduced-motion: reduce) {
   .toast {
-    min-width: 100%;
-    max-width: 100%;
+    transition: opacity var(--transition-normal);
+    transform: none;
   }
+  .toast.hide { transform: none; }
 }
 
 /* Role Invocation Badges styling */
@@ -1888,4 +2060,15 @@ body.light-theme .toast.info {
 .token-annotation {
   color: #7b52ab;
   font-weight: 600;
+}
+
+/* Ensure high contrast selection styling inside all buttons */
+.btn::selection,
+.btn *::selection,
+.hero-btn::selection,
+.hero-btn *::selection,
+.docs-footer-btn::selection,
+.docs-footer-btn *::selection {
+  background-color: #E2E8F0 !important;
+  color: #0F1115 !important;
 }

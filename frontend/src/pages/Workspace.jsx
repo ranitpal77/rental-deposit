@@ -81,20 +81,7 @@ const Workspace = ({
   if (isDashboardPage) {
     return (
       <div className="page-section">
-        {/* Dashboard Title Header */}
-        <div className="text-center" style={{ marginBottom: '3rem', marginTop: '1rem' }}>
-          <div style={{ display: 'inline-block', background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', borderRadius: '100px', padding: '0.35rem 1rem', fontSize: '0.68rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '1.25rem' }}>
-            SOROBAN SMART CONTRACT PROTOCOL
-          </div>
-          <h1 className="display-title" style={{ fontSize: '2.8rem', fontWeight: 900, fontFamily: 'var(--font-display)', letterSpacing: '-0.02em', textTransform: 'uppercase', margin: '0 0 1rem 0', color: 'var(--text-primary)' }}>
-            TRUSTLESS SECURITY DEPOSITS
-          </h1>
-          <p className="hero-description" style={{ fontSize: '1rem', color: 'var(--text-secondary)', maxWidth: '680px', margin: '0 auto', lineHeight: '1.6' }}>
-            Eliminate landlord-tenant friction. Lock rental deposits on-chain with neutral, automated rules. Release funds mutually or resolve disputes instantly via decentralized arbitration.
-          </p>
-        </div>
-
-        <div className="dashboard-grid bento-grid">
+        <div className="dashboard-grid bento-grid" style={{ marginTop: '0' }}>
 
           {/* Platform Metrics Card */}
           <div className="bento-card bento-card-metrics" style={{ gridColumn: 'span 1', gridRow: 'span 3' }}>
@@ -116,7 +103,7 @@ const Workspace = ({
               </div>
               <div className="metric-item">
                 <span className="metric-label">ON-CHAIN DISPUTES</span>
-                <span className="address-mono metric-value">{metrics.disputeCount}</span>
+                <span className="address-mono metric-value">{metrics.disputedCount}</span>
               </div>
             </div>
           </div>
@@ -132,7 +119,9 @@ const Workspace = ({
               ) : (() => {
                 const activeEscrows = dashboardEscrows.filter(e => {
                   const status = String(e.status || '').toLowerCase();
-                  return status !== 'released' && status !== 'released (disputed)' && status !== 'resolved' && status !== '3';
+                  const isNotResolved = status !== 'released' && status !== 'released (disputed)' && status !== 'resolved' && status !== '3';
+                  if (!isNotResolved) return false;
+                  return e.tenant === userAddress || e.landlord === userAddress || e.arbitrator === userAddress;
                 });
 
                 if (activeEscrows.length === 0) {
@@ -280,12 +269,12 @@ const Workspace = ({
                           }
 
                           return (
-                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', gap: '1rem', padding: '0.25rem 0' }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                            <div key={idx} className="timeline-event-row" style={{ fontSize: '0.75rem' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', minWidth: 0 }}>
                                 <span style={{ color: 'var(--text-primary)' }}>{event.event}</span>
                                 <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(event.timestamp).toLocaleString()}</span>
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                              <div className="timeline-event-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
                                 {roleLabel && (
                                   <span className={`role-badge ${roleClass}`} style={{ fontSize: '0.6rem', padding: '0.1rem 0.35rem', borderRadius: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', letterSpacing: '0.02em' }}>
                                     {roleLabel}
@@ -740,9 +729,15 @@ const Workspace = ({
                                 </svg>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', textAlign: 'left' }}>
                                   <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--color-pending)', letterSpacing: '0.05em' }}>FUNDS DEPOSIT TIME-LOCKED</span>
-                                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                    This escrow agreement is locked for the lease contract duration. You can propose or release splits starting on <strong>{formatDateTime(activeEscrowDetails.unlockTime * 1000)}</strong>.
-                                  </span>
+                                  {isCurrentUserLandlord ? (
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                      The escrow is locked. You can accept the Tenant's proposal to release funds immediately, but you cannot modify the slider or submit a conflicting proposal until the time lock expires on <strong>{formatDateTime(activeEscrowDetails.unlockTime * 1000)}</strong>.
+                                    </span>
+                                  ) : (
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                      The escrow is locked. You can propose your split below, but the Landlord cannot adjust the slider or declare a dispute until the time lock expires on <strong>{formatDateTime(activeEscrowDetails.unlockTime * 1000)}</strong>.
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             )}
@@ -754,8 +749,8 @@ const Workspace = ({
                               value={rangeSplitVal}
                               onChange={(e) => setRangeSplitVal(Number(e.target.value))}
                               className="split-slider"
-                              disabled={isLocked}
-                              style={isLocked ? { cursor: 'not-allowed', opacity: 0.5 } : {}}
+                              disabled={isCurrentUserLandlord && isLocked}
+                              style={(isCurrentUserLandlord && isLocked) ? { cursor: 'not-allowed', opacity: 0.5 } : {}}
                             />
                           </div>
 

@@ -1,38 +1,57 @@
 /* DEPOSHIELD LANDING — INFRASTRUCTURE / DIGITALPLAT AESTHETIC */
 
 /*
-  The landing page is always light regardless of the global dark/light
-  toggle (which still applies to the Workspace / Docs app pages). We scope
-  a full light token set to .homepage-container so every descendant section
-  resolves to the pale infrastructure palette even when body has no
-  .light-theme class.
+  The landing page defines its own scoped token set (--ink / --surface /
+  --line / etc.) that every descendant section resolves against. The DARK
+  palette is the base (matching the global :root dark theme); the light
+  palette is applied when body has the .light-theme class. This keeps the
+  landing page in sync with the floating dark-mode toggle.
 */
 .homepage-container {
   width: 100%;
   overflow-x: hidden;
 
-  /* Surfaces */
+  /* Surfaces (dark base) */
+  --bg-color: #0A0A0B;          /* page canvas */
+  --bg-soft: #0F0F11;           /* slightly lighter band */
+  --surface: #141415;           /* cards */
+  --surface-2: #1A1A1C;         /* inset tiles */
+  --ink-panel: #1C1C1F;         /* elevated callout cards */
+
+  /* Text (dark base) */
+  --ink: #FFFFFF;               /* headings */
+  --ink-soft: #9A9AA0;          /* muted body text */
+  --ink-faint: #646468;         /* eyebrows / captions */
+
+  /* Lines (dark base) */
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.16);
+
+  /* Accent (used sparingly, live-status only) */
+  --live: #00E676;
+  --live-bg: rgba(0, 230, 118, 0.10);
+
+  background-color: var(--bg-color);
+  color: var(--ink);
+}
+
+/* Light palette override — applied when the user selects light mode */
+body.light-theme .homepage-container {
   --bg-color: #F1F4F2;          /* pale cool off-white page canvas */
   --bg-soft: #F6F8F6;           /* slightly lighter band */
   --surface: #FFFFFF;           /* white cards */
   --surface-2: #F4F6F5;         /* inset tiles */
   --ink-panel: #0B0D10;         /* dark navy/black callout cards */
 
-  /* Text */
   --ink: #0F1115;               /* near-black headings */
   --ink-soft: #565D66;          /* muted body text */
   --ink-faint: #8A909C;         /* eyebrows / captions */
 
-  /* Lines */
   --line: rgba(15, 17, 21, 0.09);
   --line-strong: rgba(15, 17, 21, 0.16);
 
-  /* Accent (used sparingly, live-status only) */
   --live: #159A5B;
   --live-bg: rgba(21, 154, 91, 0.10);
-
-  background-color: var(--bg-color);
-  color: var(--ink);
 }
 
 /* Shared section rhythm */
@@ -108,10 +127,42 @@
 }
 
 .landing-bottom-cta .cta-btn {
-  font-size: 0.9rem;
-  padding: 0.8rem 1.8rem;
-  font-weight: 600;
+  font-size: 0.9rem !important;
+  padding: 0.8rem 1.8rem !important;
+  font-weight: 600 !important;
   text-decoration: none;
   cursor: pointer;
+  height: 48px;
+  border-radius: 24px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
+@media (max-width: 600px) {
+  .landing-bottom-cta {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 4rem 1.25rem;
+  }
+  .landing-bottom-cta .cta-btn {
+    width: 100%;
+    max-width: 320px;
+  }
+}
+
+/* Unify bottom landing secondary button style in all themes (using theme-specific vars) */
+.landing-bottom-cta .cta-btn.btn-secondary {
+  background-color: var(--surface) !important;
+  color: var(--ink) !important;
+  border: 1px solid var(--line) !important;
+  transition: transform var(--transition-fast), border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.landing-bottom-cta .cta-btn.btn-secondary:hover {
+  border-color: var(--line-strong) !important;
+  background-color: var(--surface) !important;
+  transform: translateY(-1px);
+}

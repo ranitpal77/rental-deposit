@@ -23,7 +23,7 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.5fr) !important;
   grid-auto-flow: dense !important;
   gap: 1.5rem !important;
-  margin-top: 2rem !important;
+  margin-top: 0 !important;
   align-items: start !important;
   width: 100% !important;
   max-width: none !important;
@@ -67,11 +67,40 @@
   .dashboard-grid {
     grid-template-columns: 1fr !important;
   }
-  
+
   .dashboard-grid .bento-card-metrics,
   .dashboard-grid .bento-card-dashboard,
   .dashboard-grid .bento-card-resolved {
     grid-column: span 1 !important;
     margin-top: 0 !important;
+  }
+}
+
+/* Resolved settlement timeline rows — wrap cleanly on narrow screens */
+.resolved-escrow-row .timeline-event-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.25rem 0;
+}
+
+@media (max-width: 560px) {
+  .resolved-escrow-row .timeline-event-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  .resolved-escrow-row .timeline-event-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+/* Dashboard hero description shrinks gracefully */
+@media (max-width: 600px) {
+  .dashboard-grid + *,
+  .page-section .hero-description {
+    font-size: 0.92rem;
   }
 }

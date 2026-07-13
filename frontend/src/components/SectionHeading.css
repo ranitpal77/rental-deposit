@@ -21,15 +21,11 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: #111318; /* Confident accent near-black */
+  color: var(--ink-faint);
   background: transparent;
   border: none;
   border-radius: 0;
   margin-bottom: 0.75rem;
-}
-
-body.light-theme .section-badge-pill {
-  color: #5B6270; /* Muted accent gray */
 }
 
 .section-header-block.centered .section-badge-pill {
@@ -42,26 +38,18 @@ body.light-theme .section-badge-pill {
   font-weight: 800;
   line-height: 1.2;
   letter-spacing: -0.02em;
-  color: #111318;
+  color: var(--ink);
   margin: 0;
   background: none;
   -webkit-text-fill-color: initial;
 }
 
-body.light-theme .section-title-grad {
-  color: #111318;
-}
-
 .section-subtitle-text {
   font-size: clamp(0.95rem, 1.8vw, 1.05rem);
-  color: #5B6270;
+  color: var(--ink-soft);
   max-width: 650px;
   line-height: 1.6;
   margin: 0.5rem 0 0 0;
-}
-
-body.light-theme .section-subtitle-text {
-  color: #5B6270;
 }
 
 /* Responsiveness */
