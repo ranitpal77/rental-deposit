@@ -258,13 +258,20 @@ const Navbar = ({
         {/* Mobile Hamburger toggle button */}
         <div className="navbar-mobile-toggle">
           {userAddress ? (
-            <div className="wallet-connected-wrapper" style={{ marginRight: '0.75rem', padding: '0.3rem 0.6rem', border: '1px solid var(--border-color)', borderRadius: '100px', display: 'flex', alignItems: 'center' }}>
-              <span className="wallet-address-pill" style={{ fontSize: '0.65rem', fontWeight: 600 }}>
+            <div className="wallet-connected-wrapper" style={{ marginRight: '0.75rem' }}>
+              <span className="wallet-address-pill">
                 {(() => {
                   const addrStr = typeof userAddress === 'object' ? userAddress.address : userAddress;
-                  return addrStr ? `${addrStr.slice(0, 4)}...${addrStr.slice(-3)}` : '--';
+                  return addrStr ? `${addrStr.slice(0, 5)}...${addrStr.slice(-4)}` : '--';
                 })()}
               </span>
+              <button 
+                onClick={handleDisconnectWallet} 
+                className="btn btn-secondary disconnect-btn" 
+                title="Disconnect Wallet"
+              >
+                DISCONNECT
+              </button>
             </div>
           ) : (
             <button 
