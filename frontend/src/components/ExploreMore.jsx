@@ -65,31 +65,43 @@ const ExploreMore = ({ onNavigate }) => {
                     <span className="principle-dark-eyebrow">Core principle</span>
                     <p className="principle-dark-text">{p.principle}</p>
                   </div>
-                  {p.cta.path.startsWith('#') ? (
-                    <a
-                      href={`/${p.cta.path}`}
-                      className="principle-dark-btn"
-                      onClick={(e) => {
-                        if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
-                          e.preventDefault();
-                          const el = document.getElementById(p.cta.path.substring(1));
-                          if (el) {
-                            el.scrollIntoView({ behavior: 'smooth' });
+                  <div className="principle-dark-actions">
+                    {p.cta.path.startsWith('#') ? (
+                      <a
+                        href={`/${p.cta.path}`}
+                        className="principle-dark-btn"
+                        onClick={(e) => {
+                          if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+                            e.preventDefault();
+                            const el = document.getElementById(p.cta.path.substring(1));
+                            if (el) {
+                              el.scrollIntoView({ behavior: 'smooth' });
+                            }
                           }
-                        }
-                      }}
-                    >
-                      {p.cta.label}
-                    </a>
-                  ) : (
-                    <a
-                      href={p.cta.path}
-                      className="principle-dark-btn"
-                      onClick={(e) => handleLinkClick(e, p.cta.path, onNavigate)}
-                    >
-                      {p.cta.label}
-                    </a>
-                  )}
+                        }}
+                      >
+                        {p.cta.label}
+                      </a>
+                    ) : (
+                      <a
+                        href={p.cta.path}
+                        className="principle-dark-btn"
+                        onClick={(e) => handleLinkClick(e, p.cta.path, onNavigate)}
+                      >
+                        {p.cta.label}
+                      </a>
+                    )}
+                    {p.tag.toLowerCase() === 'auditable settlement' && (
+                      <a
+                        href="https://stellar.expert/explorer/testnet/contract/CBFMZXLLIW2JUUWOC4ZQEJWRQCIGJEY34SHCVUDVIZ7NFVONF3G63LO6"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="principle-dark-btn"
+                      >
+                        VIEW SHARED CONTRACT
+                      </a>
+                    )}
+                  </div>
                 </aside>
               </div>
             </article>

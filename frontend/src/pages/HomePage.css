@@ -12,16 +12,24 @@
   overflow-x: hidden;
 
   /* Surfaces (dark base) */
-  --bg-color: #0A0A0B;          /* page canvas */
-  --bg-soft: #0F0F11;           /* slightly lighter band */
-  --surface: #141415;           /* cards */
-  --surface-2: #1A1A1C;         /* inset tiles */
-  --ink-panel: #1C1C1F;         /* elevated callout cards */
+  --bg-color: #0A0A0B;
+  /* page canvas */
+  --bg-soft: #0F0F11;
+  /* slightly lighter band */
+  --surface: #141415;
+  /* cards */
+  --surface-2: #1A1A1C;
+  /* inset tiles */
+  --ink-panel: #1C1C1F;
+  /* elevated callout cards */
 
   /* Text (dark base) */
-  --ink: #FFFFFF;               /* headings */
-  --ink-soft: #9A9AA0;          /* muted body text */
-  --ink-faint: #646468;         /* eyebrows / captions */
+  --ink: #FFFFFF;
+  /* headings */
+  --ink-soft: #9A9AA0;
+  /* muted body text */
+  --ink-faint: #646468;
+  /* eyebrows / captions */
 
   /* Lines (dark base) */
   --line: rgba(255, 255, 255, 0.08);
@@ -37,15 +45,23 @@
 
 /* Light palette override — applied when the user selects light mode */
 body.light-theme .homepage-container {
-  --bg-color: #F1F4F2;          /* pale cool off-white page canvas */
-  --bg-soft: #F6F8F6;           /* slightly lighter band */
-  --surface: #FFFFFF;           /* white cards */
-  --surface-2: #F4F6F5;         /* inset tiles */
-  --ink-panel: #0B0D10;         /* dark navy/black callout cards */
+  --bg-color: #F1F4F2;
+  /* pale cool off-white page canvas */
+  --bg-soft: #F6F8F6;
+  /* slightly lighter band */
+  --surface: #FFFFFF;
+  /* white cards */
+  --surface-2: #F4F6F5;
+  /* inset tiles */
+  --ink-panel: #0B0D10;
+  /* dark navy/black callout cards */
 
-  --ink: #0F1115;               /* near-black headings */
-  --ink-soft: #565D66;          /* muted body text */
-  --ink-faint: #8A909C;         /* eyebrows / captions */
+  --ink: #0F1115;
+  /* near-black headings */
+  --ink-soft: #565D66;
+  /* muted body text */
+  --ink-faint: #8A909C;
+  /* eyebrows / captions */
 
   --line: rgba(15, 17, 21, 0.09);
   --line-strong: rgba(15, 17, 21, 0.16);
@@ -147,6 +163,7 @@ body.light-theme .homepage-container {
     gap: 1rem;
     padding: 4rem 1.25rem;
   }
+
   .landing-bottom-cta .cta-btn {
     width: 100%;
     max-width: 320px;

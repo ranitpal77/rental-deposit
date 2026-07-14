@@ -55,7 +55,7 @@ const Hero = ({ onNavigate }) => {
             <div className="status-card-head">
               <span className="status-card-title">Escrow protocol</span>
               <span className="status-card-live">
-                <span className="live-dot"></span>
+                <span className="status-dot green"></span>
                 TESTNET LIVE
               </span>
             </div>
