@@ -417,7 +417,8 @@ All user feedback was collected via a [Google Form](https://forms.gle/1s3Abvi6QE
   <a href="https://github.com/ranitpal77/rental-deposit/commit/33abd4df812b8efccc7f0e707812f6ff719c99a9">33abd4d</a><br>
   <a href="https://github.com/ranitpal77/rental-deposit/commit/ce2c3ead0e2a5a0582a077b1bb72ba9e63a00921">ce2c3ea</a><br>
   <a href="https://github.com/ranitpal77/rental-deposit/commit/d3bc91f357713b65164d9ae6c12e4680d20dc6ff">d3bc91f</a><br>
-  <a href="https://github.com/ranitpal77/rental-deposit/commit/73e8303933e89e1ac38a0662f81db51a8d214be5">73e8303</a>
+  <a href="https://github.com/ranitpal77/rental-deposit/commit/73e8303933e89e1ac38a0662f81db51a8d214be5">73e8303</a><br>
+  <a href="https://github.com/ranitpal77/rental-deposit/commit/d0329b10238185a7c472122fcfea0d906511016f">d0329b1</a>
 </td>
     </tr>
   </tbody>
@@ -461,8 +462,8 @@ All user feedback was collected via a [Google Form](https://forms.gle/1s3Abvi6QE
 
 ## Demo Videos
 
-- [Demo 01 — Tenant & Landlord mutual release](https://drive.google.com/file/d/1j06Pp7PkYbWX1ZUllnkL9d6fhi0bkG8-/view?usp=sharing)
-- [Demo 02 — Full arbitration flow](https://drive.google.com/file/d/1eEotUZcd0m8-GPFs7fa5r2UxEeT-Y46h/view?usp=sharing)
+- [Demo 01 — Tenant & Landlord mutual release](https://drive.google.com/file/d/1kBQg4wOhE_GK0XX4U2YOMuV7dga3wn32/view?usp=sharing)
+- [Demo 02 — Full arbitration flow](https://drive.google.com/file/d/1EdmxVmpbH-Nec6YFQgJnzdemJTVD6tqX/view?usp=sharing)
 
 ---
 
