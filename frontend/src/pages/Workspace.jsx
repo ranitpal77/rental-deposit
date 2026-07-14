@@ -5,7 +5,7 @@ import { handleLinkClick } from '../utils/navigation';
 const DEFAULT_CONTRACT_ID = 'CBFMZXLLIW2JUUWOC4ZQEJWRQCIGJEY34SHCVUDVIZ7NFVONF3G63LO6';
 
 const getStatusBadgeClass = (statusStr) => {
-  switch (String(statusStr || '').toLowerCase()) {
+  switch (String(statusStr ?? '').toLowerCase()) {
     case 'active':
     case '1':
       return 'status-active';
@@ -25,7 +25,7 @@ const getStatusBadgeClass = (statusStr) => {
 };
 
 const getStatusLabel = (statusStr) => {
-  const s = String(statusStr || '').toLowerCase();
+  const s = String(statusStr ?? '').toLowerCase();
   if (s === 'created' || s === '0') return 'CREATED';
   if (s === 'active' || s === '1') return 'ACTIVE';
   if (s === 'disputed' || s === '2') return 'DISPUTED';
@@ -132,7 +132,7 @@ const Workspace = ({
                 <div className="dashboard-placeholder">Please connect your wallet to view your active escrows.</div>
               ) : (() => {
                 const activeEscrows = dashboardEscrows.filter(e => {
-                  const status = String(e.status || '').toLowerCase();
+                  const status = String(e.status ?? '').toLowerCase();
                   const isNotResolved = status !== 'released' && status !== 'released (disputed)' && status !== 'resolved' && status !== '3';
                   if (!isNotResolved) return false;
                   return e.tenant === userAddress || e.landlord === userAddress || e.arbitrator === userAddress;

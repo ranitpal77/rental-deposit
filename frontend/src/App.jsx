@@ -552,7 +552,7 @@ function App() {
 
       if (userAddress) {
         escrows.forEach(escrow => {
-          const statusLower = String(escrow.status || '').toLowerCase();
+          const statusLower = String(escrow.status ?? '').toLowerCase();
           const amount = parseFloat(escrow.amount) || 0;
           
           // Check role
@@ -587,9 +587,12 @@ function App() {
               }
             }
           } else {
-            // For active/created
-            activeCount++;
-            tvl += amount;
+            // For active/created (exclude Created/unfunded state from Active counts and TVL)
+            const isCreated = statusLower === 'created' || statusLower === '0';
+            if (!isCreated) {
+              activeCount++;
+              tvl += amount;
+            }
             if (hasHadDispute) {
               disputedCount++;
             }
@@ -1318,7 +1321,7 @@ function App() {
   };
 
   const getStatusBadgeClass = (statusStr) => {
-    switch (String(statusStr || '').toLowerCase()) {
+    switch (String(statusStr ?? '').toLowerCase()) {
       case 'active':
       case '1':
         return 'status-active';
@@ -1338,7 +1341,7 @@ function App() {
   };
 
   const getStatusLabel = (statusStr) => {
-    const s = String(statusStr || '').toLowerCase();
+    const s = String(statusStr ?? '').toLowerCase();
     if (s === 'created' || s === '0') return 'CREATED';
     if (s === 'active' || s === '1') return 'ACTIVE';
     if (s === 'disputed' || s === '2') return 'DISPUTED';
@@ -1350,7 +1353,7 @@ function App() {
 
   // Filter lists for dashboard view
   const myEscrows = dashboardEscrows.filter(e => {
-    const status = String(e.status || '').toLowerCase();
+    const status = String(e.status ?? '').toLowerCase();
     return status !== 'released' && status !== 'released (disputed)' && status !== 'resolved' && status !== '3';
   });
 
