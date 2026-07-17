@@ -472,3 +472,5 @@ All user feedback was collected via a [Google Form](https://forms.gle/1s3Abvi6QE
 - **Fee Sponsorship** — gasless transactions via Stellar fee bumps so renters don't need a native XLM balance to lock deposits
 - **Fiat On/Off Ramps** — MoneyGram and local Stellar Anchor integrations for depositing and withdrawing in local currencies
 - **Social Login** — Google Auth for non-crypto landlords to onboard without managing a wallet manually
+- **Landlord Marketplace** — A marketplace for landlords to list properties and manage rental agreements directly
+- **On-Chain Analytics** — Real-time insights and statistics of rental deposit activities leveraging the Stellar API
