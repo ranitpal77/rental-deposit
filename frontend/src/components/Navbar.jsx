@@ -78,6 +78,7 @@ const Navbar = ({
   const handleLogoClick = (e) => {
     handleLinkClick(e, '/', onNavigate);
     if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+      setIsMobileMenuOpen(false);
       setTimeout(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }, 50);
@@ -302,7 +303,13 @@ const Navbar = ({
       <div className={`mobile-nav-overlay ${isMobileMenuOpen ? 'open' : ''}`}>
         <div className={`mobile-nav-drawer ${isMobileMenuOpen ? 'open' : ''}`} ref={mobileMenuRef}>
           <div className="mobile-drawer-header">
-            DEPOSHIELD
+            <a 
+              href="/" 
+              onClick={handleLogoClick} 
+              className="mobile-drawer-brand"
+            >
+              DEPOSHIELD
+            </a>
             <button 
               className="mobile-drawer-close" 
               onClick={() => setIsMobileMenuOpen(false)}

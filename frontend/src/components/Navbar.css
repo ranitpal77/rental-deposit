@@ -284,6 +284,25 @@ body.light-theme .mobile-nav-drawer {
   padding-bottom: 1rem;
 }
 
+.mobile-drawer-brand {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  text-decoration: none;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.mobile-drawer-brand:hover {
+  opacity: 0.8;
+}
+
+body.light-theme .mobile-drawer-brand {
+  color: #111318;
+}
+
 .mobile-drawer-close {
   background: transparent;
   border: none;
