@@ -420,6 +420,19 @@ All user feedback was collected via a [Google Form](https://forms.gle/1s3Abvi6QE
   <a href="https://github.com/ranitpal77/rental-deposit/commit/d0329b10238185a7c472122fcfea0d906511016f">d0329b1</a>
 </td>
     </tr>
+    <tr>
+      <td>
+        Clear all escrow details immediately after the wallet is disconnected.<br>
+        Show by default the tenant's submitted value on the Landlord's slider.<br>
+        Fix the disappearing text cursor in input fields.<br>
+        Fix text selection visibility in the workspace (Light Mode).
+      </td>
+      <td align="center"><a href="https://github.com/ranitpal77/rental-deposit/commit/f3b5f598a91380a69c516f6db3b70af6fc0e317d">f3b5f59</a></td>
+    </tr>
+    <tr>
+      <td>Add feedback form to the footer with a responsive button.</td>
+      <td align="center"><a href="https://github.com/ranitpal77/rental-deposit/commit/f3774e36d818d6c9e3fc3891d2c9e0aae62a2801">f3774e3</a></td>
+    </tr>
   </tbody>
 </table>
 
