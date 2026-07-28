@@ -448,14 +448,13 @@ const Workspace = ({
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="input-arbitrator">ARBITRATOR PUBLIC KEY</label>
+                    <label htmlFor="input-arbitrator">ARBITRATOR PUBLIC KEY (OPTIONAL)</label>
                     <input
                       type="text"
                       id="input-arbitrator"
                       name="arbitrator"
                       className="address-mono"
-                      placeholder="GA..."
-                      required
+                      placeholder="GA... (Optional - defaults to platform arbitrator)"
                       value={createFormData.arbitrator || ''}
                       onChange={(e) => setCreateFormData({ ...createFormData, arbitrator: e.target.value })}
                       autoComplete="on"
@@ -719,6 +718,38 @@ const Workspace = ({
                     {activeEscrowDetails.status === 1 && (() => {
                       const isCurrentUserTenant = userAddress === activeEscrowDetails.tenant;
                       const isCurrentUserLandlord = userAddress === activeEscrowDetails.landlord;
+                      const isCurrentUserArbitrator = userAddress === activeEscrowDetails.arbitrator;
+
+                      // Arbitrator role guard: Arbitrator remains inactive until a dispute is raised
+                      if (isCurrentUserArbitrator) {
+                        return (
+                          <div className="action-section">
+                            <div className="info-banner info" style={{ padding: '1.25rem', textAlign: 'left', background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', borderRadius: '16px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                <span className="role-badge role-arbitrator" style={{ fontSize: '0.7rem' }}>ARBITRATOR ROLE</span>
+                                <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.9rem' }}>ARBITRATOR INACTIVE (WAITING FOR DISPUTE)</span>
+                              </div>
+                              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                                As the registered Arbitrator, your tie-breaker resolution controls will only activate if the Tenant and Landlord submit conflicting settlement proposals and a dispute is raised. No action is required from you at this time.
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // Observer guard: Un-involved wallets view as read-only observers
+                      if (!isCurrentUserTenant && !isCurrentUserLandlord) {
+                        return (
+                          <div className="action-section">
+                            <div className="info-banner info" style={{ padding: '1.25rem', textAlign: 'left', background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', borderRadius: '16px' }}>
+                              <span style={{ fontWeight: 700, display: 'block', marginBottom: '0.25rem', color: 'var(--text-primary)' }}>VIEWING AS OBSERVER</span>
+                              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                You are viewing this escrow contract as a neutral observer. Only the designated Tenant and Landlord can submit settlement proposals.
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      }
 
                       if (isCurrentUserTenant) {
                         if (activeEscrowDetails.tenantProposal) {

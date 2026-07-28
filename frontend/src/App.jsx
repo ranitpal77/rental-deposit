@@ -1020,6 +1020,8 @@ function App() {
     }
 
     const { title, desc, tenant, arbitrator, amount, token, tenantName, landlordName } = createFormData;
+    const DEFAULT_ARBITRATOR_KEY = 'GCTO7UIPBQ2Y4ZGOBVFLRHJL5EUZMPWKUIH5INQOZUQOPWNNRSISACKQ';
+    const finalArbitrator = (arbitrator && arbitrator.trim()) ? arbitrator.trim() : DEFAULT_ARBITRATOR_KEY;
     const contractAddress = DEFAULT_CONTRACT_ID;
 
     // SAC token address mappings
@@ -1041,7 +1043,7 @@ function App() {
         nativeToScVal(fnv1a64(leaseIdStr), { type: 'u64' }),
         nativeToScVal(tenant, { type: 'address' }), // tenant address from form
         nativeToScVal(userAddress, { type: 'address' }), // landlord (connected userAddress)
-        nativeToScVal(arbitrator, { type: 'address' }),
+        nativeToScVal(finalArbitrator, { type: 'address' }),
         nativeToScVal(tokenAddress, { type: 'address' }),
         nativeToScVal(BigInt(Math.floor(parseFloat(amount) * 10_000_000)), { type: 'i128' }),
         nativeToScVal(BigInt(lockDurationSeconds), { type: 'u64' }), // lock duration in seconds
@@ -1062,7 +1064,7 @@ function App() {
         tenantName: tenantName || 'Tenant',
         landlord: userAddress, // landlord (connected userAddress)
         landlordName: landlordName || 'Landlord',
-        arbitrator,
+        arbitrator: finalArbitrator,
         arbitratorName: 'Delhi Housing Authority',
         amount: `${amount} XLM`,
         status: 'Created',
@@ -1161,11 +1163,19 @@ function App() {
   // Propose Split Handler
   const handleProposeSplit = async () => {
     if (!activeEscrowDetails) return;
+
+    const isCurrentUserTenant = userAddress === activeEscrowDetails.tenant;
+    const isCurrentUserLandlord = userAddress === activeEscrowDetails.landlord;
+
+    if (!isCurrentUserTenant && !isCurrentUserLandlord) {
+      showToast('Only the designated Tenant or Landlord can submit a release proposal.', 'error');
+      return;
+    }
+
     const leaseIdStr = activeEscrowDetails.leaseId;
     const tenantAmt = rangeSplitVal;
     const landlordAmt = activeEscrowDetails.amount - tenantAmt;
 
-    const isCurrentUserLandlord = userAddress === activeEscrowDetails.landlord;
     const isConflict = activeEscrowDetails.tenantProposal && tenantAmt !== Number(activeEscrowDetails.tenantProposal[0]);
     if (isCurrentUserLandlord && isConflict && !landlordDisputeReason.trim()) {
       setShowDisputeReasonError(true);
