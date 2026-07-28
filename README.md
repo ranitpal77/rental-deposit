@@ -409,7 +409,7 @@ All user feedback was collected via a [Google Form](https://forms.gle/1s3Abvi6QE
     </tr>
     <tr>
       <td>Improve the overall responsiveness to ensure a seamless and consistent experience across desktop, tablet, and mobile devices.</td>
-      <td align="center" rowspan="3" valign="middle">
+      <td align="center" valign="middle">
   <a href="https://github.com/ranitpal77/rental-deposit/commit/c1fa2d9a2c36555e4e91f63227f8e2a159fe899b">c1fa2d9</a><br>
   <a href="https://github.com/ranitpal77/rental-deposit/commit/ec68370614fdf59b2f4670c182bd6fba4bebe747">ec68370</a><br>
   <a href="https://github.com/ranitpal77/rental-deposit/commit/4eda9505dc825b2855a9af1bc46772e522b18224">4eda950</a><br>
