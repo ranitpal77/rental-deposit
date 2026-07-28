@@ -1511,6 +1511,27 @@ function App() {
               </a>
             </div>
           </div>
+
+          <div className="footer-col feedback-col">
+            <span className="footer-col-title">FEEDBACK & SUPPORT</span>
+            <p className="footer-col-text" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>
+              Help us improve DepoShield by sharing your experience.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem', marginTop: '0.25rem' }}>
+              <a 
+                href="https://forms.gle/RjKtQLvbqo4V6veF8" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="btn btn-primary pill-btn feedback-footer-btn"
+                title="Open Feedback Form"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+                GIVE FEEDBACK
+              </a>
+            </div>
+          </div>
         </div>
         <div className="footer-bottom">
           <div className="footer-bottom-inner">
