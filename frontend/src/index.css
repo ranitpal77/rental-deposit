@@ -29,27 +29,25 @@
   --transition-normal: 0.25s ease;
 }
 
-/* Custom Selection Highlighting */
+/* Custom Selection Highlighting - Matches Landing Page */
 ::selection {
-  background-color: #E2E8F0;
-  /* Clean light slate gray background */
-  color: #0F1115;
-  /* High-contrast dark text */
+  background-color: #E2E8F0 !important;
+  color: #0F1115 !important;
 }
 
 ::-moz-selection {
-  background-color: #E2E8F0;
-  color: #0F1115;
+  background-color: #E2E8F0 !important;
+  color: #0F1115 !important;
 }
 
 body.light-theme ::selection {
-  background-color: rgba(15, 17, 21, 0.08);
-  color: inherit;
+  background-color: #E2E8F0 !important;
+  color: #0F172A !important;
 }
 
 body.light-theme ::-moz-selection {
-  background-color: rgba(15, 17, 21, 0.08);
-  color: inherit;
+  background-color: #E2E8F0 !important;
+  color: #0F172A !important;
 }
 
 body.light-theme {
@@ -115,6 +113,7 @@ body.light-theme textarea,
 body.light-theme select {
   background-color: rgba(0, 0, 0, 0.03);
   color: var(--text-primary);
+  caret-color: var(--text-primary) !important;
 }
 
 body.light-theme input:focus,
@@ -122,6 +121,7 @@ body.light-theme textarea:focus,
 body.light-theme select:focus {
   background-color: #F1F3F5;
   border-color: var(--text-primary);
+  caret-color: var(--text-primary) !important;
 }
 
 
@@ -510,6 +510,7 @@ select {
   border-radius: 12px;
   padding: 0.9rem 1.1rem;
   color: var(--text-primary);
+  caret-color: var(--text-primary) !important;
   font-family: var(--font-sans);
   font-size: 0.95rem;
   transition: border-color var(--transition-fast), outline var(--transition-fast);
@@ -522,11 +523,42 @@ textarea:focus,
 select:focus {
   outline: none;
   border-color: rgba(255, 255, 255, 0.25);
+  caret-color: var(--text-primary) !important;
 }
 
 .address-mono {
   font-family: var(--font-mono);
   letter-spacing: -0.02em;
+  caret-color: var(--text-primary) !important;
+}
+
+/* Text selection style for input & textarea fields — matches landing page selection logic */
+input::selection,
+textarea::selection,
+select::selection {
+  background-color: #E2E8F0 !important;
+  color: #0F1115 !important;
+}
+
+input::-moz-selection,
+textarea::-moz-selection,
+select::-moz-selection {
+  background-color: #E2E8F0 !important;
+  color: #0F1115 !important;
+}
+
+body.light-theme input::selection,
+body.light-theme textarea::selection,
+body.light-theme select::selection {
+  background-color: #E2E8F0 !important;
+  color: #0F172A !important;
+}
+
+body.light-theme input::-moz-selection,
+body.light-theme textarea::-moz-selection,
+body.light-theme select::-moz-selection {
+  background-color: #E2E8F0 !important;
+  color: #0F172A !important;
 }
 
 /* Autofill override to keep input styles consistent in both dark and light themes */
@@ -544,7 +576,25 @@ select:-webkit-autofill:focus,
 select:-webkit-autofill:active {
   -webkit-box-shadow: 0 0 0 1000px var(--surface-color-light) inset !important;
   -webkit-text-fill-color: var(--text-primary) !important;
+  caret-color: var(--text-primary) !important;
   transition: background-color 5000s ease-in-out 0s;
+}
+
+body.light-theme input:-webkit-autofill,
+body.light-theme input:-webkit-autofill:hover,
+body.light-theme input:-webkit-autofill:focus,
+body.light-theme input:-webkit-autofill:active,
+body.light-theme textarea:-webkit-autofill,
+body.light-theme textarea:-webkit-autofill:hover,
+body.light-theme textarea:-webkit-autofill:focus,
+body.light-theme textarea:-webkit-autofill:active,
+body.light-theme select:-webkit-autofill,
+body.light-theme select:-webkit-autofill:hover,
+body.light-theme select:-webkit-autofill:focus,
+body.light-theme select:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #F1F3F5 inset !important;
+  -webkit-text-fill-color: var(--text-primary) !important;
+  caret-color: var(--text-primary) !important;
 }
 
 /* Buttons */

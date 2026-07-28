@@ -41,6 +41,7 @@ const Workspace = ({
   setActiveTab,
   userAddress,
   walletBalance,
+  handleConnectWallet,
   createFormData,
   setCreateFormData,
   handleCreateEscrow,
@@ -75,6 +76,7 @@ const Workspace = ({
   PREDEFINED_DURATION_LABELS,
   handleQuickDurationChange,
   handleUnlockDateTimeChange,
+  handleLockDurationChange,
   onNavigate
 }) => {
   const isDashboardPage = currentPath.toLowerCase() === '/dashboard';
@@ -91,6 +93,20 @@ const Workspace = ({
       }, 100);
     }
   }, [currentPath]);
+
+  useEffect(() => {
+    if (activeEscrowDetails && activeEscrowDetails.status === 1) {
+      const isCurrentUserLandlord = userAddress === activeEscrowDetails.landlord;
+      const isCurrentUserTenant = userAddress === activeEscrowDetails.tenant;
+      if (isCurrentUserLandlord && activeEscrowDetails.tenantProposal) {
+        setRangeSplitVal(Number(activeEscrowDetails.tenantProposal[0]));
+      } else if (isCurrentUserTenant && activeEscrowDetails.tenantProposal) {
+        setRangeSplitVal(Number(activeEscrowDetails.tenantProposal[0]));
+      } else if (activeEscrowDetails.landlordProposal) {
+        setRangeSplitVal(Number(activeEscrowDetails.landlordProposal[0]));
+      }
+    }
+  }, [activeEscrowDetails, userAddress, setRangeSplitVal]);
 
   if (isDashboardPage) {
     return (
@@ -393,10 +409,12 @@ const Workspace = ({
                   <input
                     type="text"
                     id="input-title"
+                    name="title"
                     placeholder="e.g., APARTMENT 4B - GREENVIEW HEIGHTS"
                     required
-                    value={createFormData.title}
+                    value={createFormData.title || ''}
                     onChange={(e) => setCreateFormData({ ...createFormData, title: e.target.value })}
+                    autoComplete="on"
                   />
                 </div>
 
@@ -404,10 +422,12 @@ const Workspace = ({
                   <label htmlFor="input-desc">LEASE DESCRIPTION</label>
                   <textarea
                     id="input-desc"
+                    name="desc"
                     placeholder="Detail move-in dates, terms, or conditions..."
                     rows="6"
-                    value={createFormData.desc}
+                    value={createFormData.desc || ''}
                     onChange={(e) => setCreateFormData({ ...createFormData, desc: e.target.value })}
+                    autoComplete="on"
                   />
                 </div>
 
@@ -417,11 +437,13 @@ const Workspace = ({
                     <input
                       type="text"
                       id="input-tenant"
+                      name="tenant"
                       className="address-mono"
                       placeholder="GD..."
                       required
-                      value={createFormData.tenant}
+                      value={createFormData.tenant || ''}
                       onChange={(e) => setCreateFormData({ ...createFormData, tenant: e.target.value })}
+                      autoComplete="on"
                     />
                   </div>
 
@@ -430,11 +452,13 @@ const Workspace = ({
                     <input
                       type="text"
                       id="input-arbitrator"
+                      name="arbitrator"
                       className="address-mono"
                       placeholder="GA..."
                       required
-                      value={createFormData.arbitrator}
+                      value={createFormData.arbitrator || ''}
                       onChange={(e) => setCreateFormData({ ...createFormData, arbitrator: e.target.value })}
+                      autoComplete="on"
                     />
                   </div>
                 </div>
@@ -445,11 +469,13 @@ const Workspace = ({
                     <input
                       type="number"
                       id="input-amount"
+                      name="amount"
                       placeholder="e.g., 500"
                       required
                       min="1"
-                      value={createFormData.amount}
+                      value={createFormData.amount || ''}
                       onChange={(e) => setCreateFormData({ ...createFormData, amount: e.target.value })}
+                      autoComplete="on"
                     />
                   </div>
 
@@ -457,8 +483,10 @@ const Workspace = ({
                     <label htmlFor="select-token">TOKEN ASSET</label>
                     <select
                       id="select-token"
-                      value={createFormData.token}
+                      name="token"
+                      value={createFormData.token || 'native'}
                       onChange={(e) => setCreateFormData({ ...createFormData, token: e.target.value })}
+                      autoComplete="on"
                     >
                       <option value="native">XLM (Native Stellar)</option>
                       <option value="usdc">USDC (Stellar Anchor)</option>
@@ -482,9 +510,11 @@ const Workspace = ({
                       <input
                         type="datetime-local"
                         id="input-unlock-time"
+                        name="unlockDateTime"
                         required
-                        value={unlockDateTime}
+                        value={unlockDateTime || ''}
                         onChange={(e) => handleUnlockDateTimeChange(e.target.value)}
+                        autoComplete="on"
                       />
                     </div>
 
@@ -493,11 +523,18 @@ const Workspace = ({
                       <input
                         type="number"
                         id="input-lock-seconds"
+                        name="lockDurationSeconds"
                         placeholder="e.g., 86400"
                         required
                         min="1"
-                        value={lockDurationSeconds === 0 ? '0' : Number(lockDurationSeconds).toString()}
-                        onChange={(e) => handleUnlockDateTimeChange(new Date(Date.now() + Number(e.target.value) * 1000).toISOString().slice(0, 16))}
+                        value={lockDurationSeconds === 0 ? '' : lockDurationSeconds}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (handleLockDurationChange) {
+                            handleLockDurationChange(val === '' ? 0 : Number(val));
+                          }
+                        }}
+                        autoComplete="on"
                       />
                     </div>
                   </div>
@@ -536,10 +573,12 @@ const Workspace = ({
                   <input
                     type="text"
                     id="input-tenant-name"
+                    name="tenantName"
                     placeholder="Your Name"
                     required
-                    value={createFormData.tenantName}
+                    value={createFormData.tenantName || ''}
                     onChange={(e) => setCreateFormData({ ...createFormData, tenantName: e.target.value })}
+                    autoComplete="on"
                   />
                 </div>
                 <div className="form-group">
@@ -547,10 +586,12 @@ const Workspace = ({
                   <input
                     type="text"
                     id="input-landlord-name"
+                    name="landlordName"
                     placeholder="Landlord Name"
                     required
-                    value={createFormData.landlordName}
+                    value={createFormData.landlordName || ''}
                     onChange={(e) => setCreateFormData({ ...createFormData, landlordName: e.target.value })}
+                    autoComplete="on"
                   />
                 </div>
 

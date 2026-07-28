@@ -372,6 +372,13 @@ function App() {
     setUserAddress(null);
     setWalletBalance('-- XLM');
     localStorage.removeItem('deposhield_connected_address');
+    setActiveEscrowDetails(null);
+    setSearchLeaseId('');
+    setErrorDetails(null);
+    setLandlordDisputeReason('');
+    setShowDisputeReasonError(false);
+    setRangeSplitVal(0);
+    setRangeArbVal(0);
     showToast('Your wallet has been disconnected.', 'info', null, 'Wallet Disconnected');
   }, [showToast]);
 
@@ -978,18 +985,18 @@ function App() {
       }
 
       // Snap slider ranges to snapped proposals or default half
+      // Snap slider ranges to tenant proposal by default for landlord or existing proposals
       const isCurrentUserTenant = userAddress === tenantAddr;
       const isCurrentUserLandlord = userAddress === landlordAddr;
       const hasTenantProposed = !!tenantProposal;
       const hasLandlordProposed = !!landlordProposal;
-      const hasCurrentUserProposed = (isCurrentUserTenant && hasTenantProposed) || (isCurrentUserLandlord && hasLandlordProposed);
-      const hasOtherPartyProposed = (isCurrentUserTenant && hasLandlordProposed) || (isCurrentUserLandlord && hasTenantProposed);
 
-      if (hasOtherPartyProposed && !hasCurrentUserProposed) {
-        // Auto snap slider to match other party split to facilitate easy release
-        const otherProposal = isCurrentUserTenant ? landlordProposal : tenantProposal;
-        const otherTenantAmt = Number(otherProposal[0]);
-        setRangeSplitVal(otherTenantAmt);
+      if (isCurrentUserLandlord && hasTenantProposed) {
+        setRangeSplitVal(Number(tenantProposal[0]));
+      } else if (isCurrentUserTenant && hasTenantProposed) {
+        setRangeSplitVal(Number(tenantProposal[0]));
+      } else if (hasLandlordProposed) {
+        setRangeSplitVal(Number(landlordProposal[0]));
       } else {
         setRangeSplitVal(Math.floor(amountVal / 2));
       }
@@ -1404,6 +1411,7 @@ function App() {
                 setActiveTab={setActiveTab}
                 userAddress={userAddress}
                 walletBalance={walletBalance}
+                handleConnectWallet={handleConnectWallet}
                 createFormData={createFormData}
                 setCreateFormData={setCreateFormData}
                 handleCreateEscrow={handleCreateEscrow}
@@ -1441,6 +1449,7 @@ function App() {
                 PREDEFINED_DURATION_LABELS={PREDEFINED_DURATION_LABELS}
                 handleQuickDurationChange={syncFromSlider}
                 handleUnlockDateTimeChange={syncFromDateTime}
+                handleLockDurationChange={syncFromDuration}
                 onNavigate={navigate}
               />
             );

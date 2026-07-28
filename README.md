@@ -376,14 +376,13 @@ All user feedback was collected via a [Google Form](https://forms.gle/1s3Abvi6QE
       <td align="center"><a href="https://github.com/ranitpal77/rental-deposit/commit/fd979d4ddc1db90d12428da2869a19db2dea8677">fd979d4</a></td>
     </tr>
     <tr>
-      <td>Automatically raise a dispute if the landlord rejects the other party's proposal and submits a counterproposal instead.</td>
+      <td>Automatically raise a dispute if the landlord rejects the other party's proposal and submits a counterproposal instead. Prevent either party from raising a dispute unless they have first submitted a settlement proposal.</td>
         <td align="center" rowspan="2" valign="middle">
           <a href="https://github.com/ranitpal77/rental-deposit/commit/7282450c9f5074695d46ed54084be5875fd9db24">7282450</a><br>
           <a href="https://github.com/ranitpal77/rental-deposit/commit/8d7eabba35f4b4261f6149a4a210a449f898e43a">8d7eabba</a>
         </td>
     </tr>
     <tr>
-      <td>Prevent either party from raising a dispute unless they have first submitted a settlement proposal.</td>
     </tr>
     <tr>
       <td>Ensure both parties can view the lease description and the names, regardless of who created the escrow.</td>
