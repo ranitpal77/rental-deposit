@@ -27,7 +27,8 @@
 12. [On-Chain Info](#-on-chain-info)
 13. [Screenshots](#-screenshots)
 14. [Demo Videos](#demo-videos)
-15. [Future Enhancements](#-future-enhancements)
+15. [Pitch Deck & Presentation](#pitch-deck--presentation)
+16. [Future Enhancements](#-future-enhancements)
 
 
 ---
@@ -476,6 +477,13 @@ All user feedback was collected via a [Google Form](https://forms.gle/1s3Abvi6QE
 
 - [Demo 01 — Tenant & Landlord mutual release](https://drive.google.com/file/d/1kBQg4wOhE_GK0XX4U2YOMuV7dga3wn32/view?usp=sharing)
 - [Demo 02 — Full arbitration flow](https://drive.google.com/file/d/1EdmxVmpbH-Nec6YFQgJnzdemJTVD6tqX/view?usp=sharing)
+
+---
+
+## Pitch Deck & Presentation
+
+- [Pitch Deck (PPT Presentation)](https://docs.google.com/presentation/d/1xHW0pbAEX9AsWPjN_CevDGYf3K8_uyVo/edit?usp=sharing&ouid=112073562773622625212&rtpof=true&sd=true)
+- [Pitch Deck (PDF Document)](https://drive.google.com/file/d/1ucUTyUXqBMxG8vAAXrGSXdMQjA6letG2/view?usp=sharing)
 
 ---
 
