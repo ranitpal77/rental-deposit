@@ -482,8 +482,8 @@ All user feedback was collected via a [Google Form](https://forms.gle/1s3Abvi6QE
 
 ## Pitch Deck & Presentation
 
-- [Pitch Deck (PPT Presentation)](https://docs.google.com/presentation/d/1xHW0pbAEX9AsWPjN_CevDGYf3K8_uyVo/edit?usp=sharing&ouid=112073562773622625212&rtpof=true&sd=true)
-- [Pitch Deck (PDF Document)](https://drive.google.com/file/d/1ucUTyUXqBMxG8vAAXrGSXdMQjA6letG2/view?usp=sharing)
+- [Pitch Deck (PPT Presentation)](https://docs.google.com/presentation/d/19X8HJN0pD9LcIwZS1B4biK8M0o_8jirv/edit?usp=sharing&ouid=112073562773622625212&rtpof=true&sd=true)
+- [Pitch Deck (PDF Document)](https://drive.google.com/file/d/1zA2Svs5jAM8zsqHgF_66udmD4Mbn6iy9/view?usp=sharing)
 
 ---
 
