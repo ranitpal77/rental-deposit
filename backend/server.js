@@ -133,6 +133,10 @@ app.post('/api/escrows/:leaseId/propose', (req, res) => {
   const escrow = escrows.find(e => e.leaseId.toString() === req.params.leaseId);
   if (!escrow) return res.status(404).json({ error: 'Escrow not found' });
 
+  if (caller !== escrow.tenant && caller !== escrow.landlord) {
+    return res.status(400).json({ error: 'Only Tenant or Landlord can propose a release split' });
+  }
+
   const callerName = caller === escrow.tenant ? escrow.tenantName : escrow.landlordName;
   const callerRole = caller === escrow.tenant ? 'Tenant' : 'Landlord';
   const otherName = caller === escrow.tenant ? escrow.landlordName : escrow.tenantName;
@@ -205,6 +209,11 @@ app.post('/api/escrows/:leaseId/resolve', (req, res) => {
   const { tenantAmount, landlordAmount, txHash } = req.body;
   const escrow = escrows.find(e => e.leaseId.toString() === req.params.leaseId);
   if (!escrow) return res.status(404).json({ error: 'Escrow not found' });
+
+  const currentStatusStr = String(escrow.status || '').toLowerCase();
+  if (currentStatusStr !== 'disputed' && currentStatusStr !== '2') {
+    return res.status(400).json({ error: 'Arbitrator can only resolve disputed escrows' });
+  }
 
   escrow.status = 'Released (Disputed)';
   escrow.history.push({ 

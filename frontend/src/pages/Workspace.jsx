@@ -204,21 +204,8 @@ const Workspace = ({
                   const isResolved = statusLower === 'released' || statusLower === 'released (disputed)' || statusLower === 'resolved' || statusLower === '3';
                   if (!isResolved) return false;
 
-                  // Filter based on connected wallet role
-                  if (e.tenant === userAddress) {
-                    return true;
-                  }
-                  if (e.landlord === userAddress) {
-                    return true;
-                  }
-                  if (e.arbitrator === userAddress) {
-                    const isDisputed = statusLower.includes('disput') || statusLower === 'resolved' || statusLower === '2' || statusLower === '3';
-                    const hasDisputeEvent = e.history && e.history.some(h =>
-                      String(h.event).toLowerCase().includes('dispute')
-                    );
-                    return isDisputed || hasDisputeEvent;
-                  }
-                  return false;
+                  // Filter based on connected wallet role (Tenant, Landlord, or Arbitrator)
+                  return e.tenant === userAddress || e.landlord === userAddress || e.arbitrator === userAddress;
                 });
 
                 if (resolvedEscrows.length === 0) {
@@ -686,6 +673,7 @@ const Workspace = ({
                     {/* Actions: Unfunded state */}
                     {activeEscrowDetails.status === 0 && (() => {
                       const isCurrentUserTenant = userAddress === activeEscrowDetails.tenant;
+                      const isCurrentUserArbitrator = userAddress === activeEscrowDetails.arbitrator;
                       if (isCurrentUserTenant) {
                         return (
                           <div className="action-section">
@@ -699,6 +687,17 @@ const Workspace = ({
                             >
                               {isFunding ? 'FUNDING ESCROW ON-CHAIN...' : 'FUND ESCROW NOW (DEPOSIT)'}
                             </button>
+                          </div>
+                        );
+                      } else if (isCurrentUserArbitrator) {
+                        return (
+                          <div className="action-section">
+                            <div className="info-banner warning" style={{ padding: '1.25rem', textAlign: 'left' }}>
+                              <span style={{ fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>ARBITRATOR INACTIVE</span>
+                              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                Escrow initialized on-chain. The Arbitrator remains inactive until the deposit is funded and a formal dispute is created.
+                              </p>
+                            </div>
                           </div>
                         );
                       } else {
@@ -719,6 +718,20 @@ const Workspace = ({
                     {activeEscrowDetails.status === 1 && (() => {
                       const isCurrentUserTenant = userAddress === activeEscrowDetails.tenant;
                       const isCurrentUserLandlord = userAddress === activeEscrowDetails.landlord;
+                      const isCurrentUserArbitrator = userAddress === activeEscrowDetails.arbitrator;
+
+                      if (isCurrentUserArbitrator) {
+                        return (
+                          <div className="action-section">
+                            <div className="info-banner warning" style={{ padding: '1.25rem', textAlign: 'left' }}>
+                              <span style={{ fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>ARBITRATOR INACTIVE</span>
+                              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                The escrow is currently active and funded. The Arbitrator remains completely inactive until both Tenant and Landlord submit conflicting release proposals, automatically creating a dispute.
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      }
 
                       if (isCurrentUserTenant) {
                         if (activeEscrowDetails.tenantProposal) {
@@ -749,6 +762,17 @@ const Workspace = ({
                             </div>
                           );
                         }
+                      } else {
+                        return (
+                          <div className="action-section">
+                            <div className="info-banner warning" style={{ padding: '1.25rem', textAlign: 'left' }}>
+                              <span style={{ fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>READ-ONLY VIEW</span>
+                              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                Only the Tenant or Landlord of this escrow can submit release split proposals.
+                              </p>
+                            </div>
+                          </div>
+                        );
                       }
 
                       return (

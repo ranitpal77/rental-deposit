@@ -577,21 +577,10 @@ function App() {
           const hasHadDispute = statusLower === 'disputed' || statusLower === '2' || statusLower === 'released (disputed)' || statusLower === 'resolved' || hasDisputeEvent;
 
           if (isResolved) {
-            // For resolved, apply exact display filters
-            let shouldInclude = false;
-            if (isTenant || isLandlord) {
-              shouldInclude = true;
-            } else if (isArbitrator) {
-              const isDisputed = statusLower.includes('disput') || statusLower === 'resolved' || statusLower === '2' || statusLower === '3';
-              shouldInclude = isDisputed || hasDisputeEvent;
-            }
-            
-            if (shouldInclude) {
-              resolvedCount++;
-              resolvedVol += amount;
-              if (hasHadDispute) {
-                disputedCount++;
-              }
+            resolvedCount++;
+            resolvedVol += amount;
+            if (hasHadDispute) {
+              disputedCount++;
             }
           } else {
             // For active/created (exclude Created/unfunded state from Active counts and TVL)
@@ -1161,11 +1150,18 @@ function App() {
   // Propose Split Handler
   const handleProposeSplit = async () => {
     if (!activeEscrowDetails) return;
+
+    const isCurrentUserTenant = userAddress === activeEscrowDetails.tenant;
+    const isCurrentUserLandlord = userAddress === activeEscrowDetails.landlord;
+    if (!isCurrentUserTenant && !isCurrentUserLandlord) {
+      showToast('Only the Tenant or Landlord can submit a release proposal.', 'error');
+      return;
+    }
+
     const leaseIdStr = activeEscrowDetails.leaseId;
     const tenantAmt = rangeSplitVal;
     const landlordAmt = activeEscrowDetails.amount - tenantAmt;
 
-    const isCurrentUserLandlord = userAddress === activeEscrowDetails.landlord;
     const isConflict = activeEscrowDetails.tenantProposal && tenantAmt !== Number(activeEscrowDetails.tenantProposal[0]);
     if (isCurrentUserLandlord && isConflict && !landlordDisputeReason.trim()) {
       setShowDisputeReasonError(true);
@@ -1276,6 +1272,18 @@ function App() {
   // Resolve Dispute (Arbitrator Action)
   const handleResolveDispute = async () => {
     if (!activeEscrowDetails) return;
+
+    const isCurrentUserArbitrator = userAddress === activeEscrowDetails.arbitrator;
+    if (!isCurrentUserArbitrator) {
+      showToast('Only the registered Arbitrator can resolve a dispute.', 'error');
+      return;
+    }
+
+    if (activeEscrowDetails.status !== 2) {
+      showToast('The Arbitrator can only resolve active disputes.', 'error');
+      return;
+    }
+
     const leaseIdStr = activeEscrowDetails.leaseId;
     const tenantAmt = rangeArbVal;
     const landlordAmt = activeEscrowDetails.amount - tenantAmt;
@@ -1369,15 +1377,7 @@ function App() {
     const isResolved = statusLower === 'released' || statusLower === 'released (disputed)' || statusLower === 'resolved' || statusLower === '3';
     if (!isResolved) return false;
     
-    if (e.tenant === userAddress || e.landlord === userAddress) return true;
-    if (e.arbitrator === userAddress) {
-      const isDisputed = statusLower.includes('disput') || statusLower === 'resolved' || statusLower === '2' || statusLower === '3';
-      const hasDisputeEvent = e.history && e.history.some(h => 
-        String(h.event).toLowerCase().includes('dispute')
-      );
-      return isDisputed || hasDisputeEvent;
-    }
-    return false;
+    return e.tenant === userAddress || e.landlord === userAddress || e.arbitrator === userAddress;
   });
 
   return (
