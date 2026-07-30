@@ -2294,3 +2294,151 @@ code *::selection {
   background-color: #E2E8F0 !important;
   color: #0F1115 !important;
 }
+
+/* ==========================================================================
+   SCROLL REVEAL ANIMATIONS
+   ========================================================================== */
+
+.reveal,
+.reveal-up,
+.reveal-down,
+.reveal-left,
+.reveal-right,
+.reveal-scale,
+.reveal-fade,
+.hero-lead,
+.hero-status-card,
+.principle-card,
+.cap-card,
+.timeline-step-card,
+.why-stellar-content,
+.why-code-editor,
+.bento-card,
+.doc-card,
+.doc-section,
+.doc-banner,
+.use-case-card,
+.diagram-container,
+.doc-table,
+.doc-code-block-wrapper,
+.docs-left-panel,
+.docs-footer-buttons-wrapper,
+.subsection {
+  opacity: 0;
+  will-change: opacity, transform;
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal-up,
+.hero-lead,
+.principle-card,
+.cap-card,
+.timeline-step-card,
+.why-stellar-content,
+.bento-card,
+.doc-card,
+.doc-section,
+.doc-banner,
+.use-case-card,
+.doc-table,
+.doc-code-block-wrapper,
+.docs-footer-buttons-wrapper,
+.subsection {
+  transform: translateY(35px);
+}
+
+.reveal-down {
+  transform: translateY(-35px);
+}
+
+.reveal-left,
+.docs-left-panel {
+  transform: translateX(-35px);
+}
+
+.reveal-right,
+.hero-status-card,
+.why-code-editor {
+  transform: translateX(35px);
+}
+
+.reveal-scale,
+.diagram-container {
+  transform: scale(0.94);
+}
+
+.reveal-fade {
+  transform: translateY(0);
+}
+
+/* Active / Revealed State */
+.reveal.revealed,
+.reveal-up.revealed,
+.reveal-down.revealed,
+.reveal-left.revealed,
+.reveal-right.revealed,
+.reveal-scale.revealed,
+.reveal-fade.revealed,
+.hero-lead.revealed,
+.hero-status-card.revealed,
+.principle-card.revealed,
+.cap-card.revealed,
+.timeline-step-card.revealed,
+.why-stellar-content.revealed,
+.why-code-editor.revealed,
+.bento-card.revealed,
+.doc-card.revealed,
+.doc-section.revealed,
+.doc-banner.revealed,
+.use-case-card.revealed,
+.diagram-container.revealed,
+.doc-table.revealed,
+.doc-code-block-wrapper.revealed,
+.docs-left-panel.revealed,
+.docs-footer-buttons-wrapper.revealed,
+.subsection.revealed {
+  opacity: 1;
+  transform: translateY(0) translateX(0) scale(1);
+}
+
+/* Stagger Delays */
+.delay-100 { transition-delay: 0.1s; }
+.delay-200 { transition-delay: 0.2s; }
+.delay-300 { transition-delay: 0.3s; }
+.delay-400 { transition-delay: 0.4s; }
+.delay-500 { transition-delay: 0.5s; }
+.delay-600 { transition-delay: 0.6s; }
+
+/* Reduced Motion Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal-up,
+  .reveal-down,
+  .reveal-left,
+  .reveal-right,
+  .reveal-scale,
+  .reveal-fade,
+  .hero-lead,
+  .hero-status-card,
+  .principle-card,
+  .cap-card,
+  .timeline-step-card,
+  .why-stellar-content,
+  .why-code-editor,
+  .bento-card,
+  .doc-card,
+  .doc-section,
+  .doc-banner,
+  .use-case-card,
+  .diagram-container,
+  .doc-table,
+  .doc-code-block-wrapper,
+  .docs-left-panel,
+  .docs-footer-buttons-wrapper,
+  .subsection {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}

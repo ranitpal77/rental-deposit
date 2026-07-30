@@ -17,6 +17,7 @@ import Navbar from './components/Navbar';
 import HomePage from './pages/HomePage';
 import DocsPage from './pages/DocsPage';
 import Workspace from './pages/Workspace';
+import useScrollReveal from './utils/useScrollReveal';
 
 // Polyfill Buffer for Webpack 5 in React environment
 if (typeof window !== 'undefined') {
@@ -119,6 +120,9 @@ function App() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [activeTab, setActiveTab] = useState('create');
   const [theme, setTheme] = useState('light');
+
+  // Activate scroll reveal animations across all pages
+  useScrollReveal(currentPath);
 
   // Wallet State
   const [userAddress, setUserAddress] = useState(null);

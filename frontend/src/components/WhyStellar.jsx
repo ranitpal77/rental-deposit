@@ -22,7 +22,7 @@ const WhyStellar = () => {
         <div className="why-stellar-grid">
           
           {/* Left Column: Explanatory Content */}
-          <div className="why-stellar-content">
+          <div className="why-stellar-content reveal-left">
             <span className="why-stellar-eyebrow">Why it must be on Stellar</span>
             <h2 className="why-stellar-title">
               Instant settlement. Smart contract security.
@@ -83,7 +83,7 @@ const WhyStellar = () => {
           </div>
 
           {/* Right Column: Code Editor Mockup */}
-          <div className="why-code-editor">
+          <div className="why-code-editor reveal-right delay-200">
             <div className="why-code-header">
               <div className="mac-buttons">
                 <span className="mac-dot close"></span>

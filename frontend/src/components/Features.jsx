@@ -32,7 +32,7 @@ const Features = () => {
   return (
     <section className="features-section" id="features">
       <div className="hp-wrap">
-        <div className="section-head">
+        <div className="section-head reveal-up">
           <span className="section-eyebrow">What we build</span>
           <h2 className="section-title">Infrastructure for deposit custody.</h2>
           <p className="section-sub">
@@ -43,8 +43,8 @@ const Features = () => {
         </div>
 
         <div className="cap-grid">
-          {CAPABILITIES.map((c) => (
-            <article className="cap-card" key={c.title}>
+          {CAPABILITIES.map((c, idx) => (
+            <article className={`cap-card reveal-up delay-${((idx % 3) + 1) * 100}`} key={c.title}>
               <h3 className="cap-title">{c.title}</h3>
               <p className="cap-desc">{c.desc}</p>
             </article>

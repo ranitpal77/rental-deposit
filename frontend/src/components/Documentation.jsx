@@ -56,7 +56,7 @@ const Documentation = ({ onNavigate }) => {
     <>
       <div className="docs-layout">
       {/* Left Panel: Sticky Contents Card */}
-      <aside className="docs-left-panel">
+      <aside className="docs-left-panel reveal-left">
         <div className="contents-card always-open">
           <div className="contents-card-header">
             <span className="contents-label">Contents</span>
@@ -84,7 +84,7 @@ const Documentation = ({ onNavigate }) => {
       <main className="docs-right-panel" ref={rightPanelRef}>
         
         {/* Section 1: Abstract */}
-        <section id="doc-abstract" className="doc-section">
+        <section id="doc-abstract" className="doc-section reveal-up">
           <div className="docs-badge-row" style={{ marginBottom: '1.75rem' }}>
             <span className="docs-badge spec">TECHNICAL SPECIFICATION</span>
             <span className="docs-badge version">v1.0.0</span>
@@ -99,7 +99,7 @@ const Documentation = ({ onNavigate }) => {
             By replacing landlord-controlled savings accounts with neutral, self-executing Web3 smart contracts, the system eliminates traditional deposit reclamation friction, enforces matching release proposals, and introduces a decentralized arbitrator backstop to resolve disputes transparently.
           </p>
           
-          <div className="doc-banner info">
+          <div className="doc-banner info reveal-up delay-100">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-info)" strokeWidth="2.5" style={{ flexShrink: 0, marginTop: '2px' }}>
               <circle cx="12" cy="12" r="10"></circle>
               <line x1="12" y1="16" x2="12" y2="12"></line>
@@ -112,7 +112,7 @@ const Documentation = ({ onNavigate }) => {
         </section>
 
         {/* Section 2: Introduction */}
-        <section id="doc-introduction" className="doc-section">
+        <section id="doc-introduction" className="doc-section reveal-up">
           <div className="doc-section-heading">
             <span className="doc-section-num">2</span>
             <h2>INTRODUCTION</h2>
@@ -123,15 +123,15 @@ const Documentation = ({ onNavigate }) => {
           </p>
           
           <div className="numbered-subsections">
-            <div className="subsection">
+            <div className="subsection reveal-up delay-100">
               <h4>2.1 Payout Imbalance</h4>
               <p>Landlords can arbitrarily withhold deposits post-tenancy, forcing tenants into costly, delayed legal claims.</p>
             </div>
-            <div className="subsection">
+            <div className="subsection reveal-up delay-200">
               <h4>2.2 Lack of Transparency</h4>
               <p>Tenants have no visibility into where their funds are stored, whether they are commingled, or if they are being held in escrow.</p>
             </div>
-            <div className="subsection">
+            <div className="subsection reveal-up delay-300">
               <h4>2.3 Double Claim Discrepancies</h4>
               <p>Resolving wear-and-tear vs. physical damage often comes down to word-of-mouth rather than evidentiary validation.</p>
             </div>
@@ -290,14 +290,14 @@ const Documentation = ({ onNavigate }) => {
         </section>
 
         {/* Section 4: Use Cases */}
-        <section id="doc-use-cases" className="doc-section">
+        <section id="doc-use-cases" className="doc-section reveal-up">
           <div className="doc-section-heading">
             <span className="doc-section-num">4</span>
             <h2>USE CASES</h2>
           </div>
           
           <div className="use-cases-grid">
-            <div className="use-case-card">
+            <div className="use-case-card reveal-up delay-100">
               <div className="use-case-header">
                 <div className="use-case-icon">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -317,7 +317,7 @@ const Documentation = ({ onNavigate }) => {
               </p>
             </div>
 
-            <div className="use-case-card">
+            <div className="use-case-card reveal-up delay-200">
               <div className="use-case-header">
                 <div className="use-case-icon">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -341,7 +341,7 @@ const Documentation = ({ onNavigate }) => {
     </div>
 
     {/* Footer Navigation Buttons at Bottom of Docs — outside the layout grid */}
-    <div className="docs-footer-buttons-wrapper">
+    <div className="docs-footer-buttons-wrapper reveal-up delay-100">
       <div className="docs-footer-buttons">
         <a href="/#explore-more" onClick={handleExploreMoreClick} className="btn btn-primary pill-btn docs-footer-btn">
           Explore More

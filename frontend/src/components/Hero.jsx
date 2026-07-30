@@ -8,7 +8,7 @@ const Hero = ({ onNavigate }) => {
       <div className="hero-wrap">
         <div className="hero-grid">
           {/* Left column — message */}
-          <div className="hero-lead">
+          <div className="hero-lead reveal-left">
             <span className="hero-eyebrow">DepoShield Protocol · Stellar Soroban</span>
 
             <h1 className="hero-title">
@@ -50,7 +50,7 @@ const Hero = ({ onNavigate }) => {
           </div>
 
           {/* Right column — live protocol status card */}
-          <aside className="hero-status-card">
+          <aside className="hero-status-card reveal-right delay-200">
             <span className="status-card-eyebrow">Operational profile</span>
             <div className="status-card-head">
               <span className="status-card-title">Escrow protocol</span>
