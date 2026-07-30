@@ -431,8 +431,16 @@ All user feedback was collected via a [Google Form](https://forms.gle/1s3Abvi6QE
       <td align="center"><a href="https://github.com/ranitpal77/rental-deposit/commit/f3b5f598a91380a69c516f6db3b70af6fc0e317d">f3b5f59</a></td>
     </tr>
     <tr>
-      <td>Add feedback form to the footer with a responsive button.</td>
+      <td>Add feedback form to the footer.</td>
       <td align="center"><a href="https://github.com/ranitpal77/rental-deposit/commit/f3774e36d818d6c9e3fc3891d2c9e0aae62a2801">f3774e3</a></td>
+    </tr>
+    <tr>
+      <td>Show the lease history on the dashboard for all participants involved in the lease.</td>
+      <td align="center"><a href="https://github.com/ranitpal77/rental-deposit/commit/3d095765aaf9068c1e541e3da16cc4453e057b0a">3d09576</a></td>
+    </tr>
+    <tr>
+      <td>Add scroll reveal animations throughout the website.</td>
+      <td align="center"><a href="https://github.com/ranitpal77/rental-deposit/commit/ed3894d3b2f8ef8575937378a385bfca5d2f822e">ed3894d</a></td>
     </tr>
   </tbody>
 </table>
@@ -475,8 +483,10 @@ All user feedback was collected via a [Google Form](https://forms.gle/1s3Abvi6QE
 
 ## Demo Videos
 
-- [Demo 01 — Tenant & Landlord mutual release](https://drive.google.com/file/d/1kBQg4wOhE_GK0XX4U2YOMuV7dga3wn32/view?usp=sharing)
-- [Demo 02 — Full arbitration flow](https://drive.google.com/file/d/1EdmxVmpbH-Nec6YFQgJnzdemJTVD6tqX/view?usp=sharing)
+- [Demo 01 — Tenant & Landlord mutual release (Short Video)](https://drive.google.com/file/d/1kBQg4wOhE_GK0XX4U2YOMuV7dga3wn32/view?usp=sharing)
+- [Demo 02 — Tenant & Landlord mutual release (Explained)](https://drive.google.com/file/d/1MOrlWZW0HDlSqsoYNBUBRSVpKU6OAcr7/view?usp=sharing)
+- [Demo 03 — Full arbitration flow (Short Video)](https://drive.google.com/file/d/1EdmxVmpbH-Nec6YFQgJnzdemJTVD6tqX/view?usp=sharing)
+- [Demo 04 — Full arbitration flow (Explained)](https://drive.google.com/file/d/1fbnlOQKlp5sw2q-uVItpcnogslJWcFSZ/view?usp=sharing)
 
 ---
 
