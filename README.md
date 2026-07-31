@@ -9,26 +9,24 @@
 
 ## Table of Contents
 
-1.  [The Problem](#-the-problem)
-2.  [How It Works](#-how-it-works)
-3.  [Features](#-features)
-4.  [The Stellar
-    Advantage](#-the-stellar-advantage-beyond-hand-to-hand-cash)
-5.  [Architecture](#-architecture)
+1.  [The Problem](#the-problem)
+2.  [How It Works](#how-it-works)
+3.  [Features](#features)
+4.  [The Stellar Advantage](#the-stellar-advantage-beyond-hand-to-hand-cash)
+5.  [Architecture](#architecture)
     -   [Escrow Flow](#escrow-flow)
     -   [Development Pipeline](#development-pipeline-plan)
-6.  [Tech Stack](#-tech-stack)
-7.  [Setup & Local Development](#-setup--local-development)
-8.  [End-to-End Walkthrough](#-end-to-end-walkthrough)
-9.  [Project Structure](#-project-structure)
-10. [User Feedback &
-    Responses](#-user-feedback--responses-user-onboarding)
-11. [Feedback Iteration Tracker](#-feedback-iteration-tracker)
-12. [On-Chain Info](#-on-chain-info)
-13. [Screenshots](#-screenshots)
+6.  [Tech Stack](#tech-stack)
+7.  [Setup & Local Development](#setup--local-development)
+8.  [End-to-End Walkthrough](#end-to-end-walkthrough)
+9.  [Project Structure](#project-structure)
+10. [User Feedback & Responses](#user-feedback--responses-user-onboarding)
+11. [Feedback Iteration Tracker](#feedback-iteration-tracker)
+12. [On-Chain Info](#on-chain-info)
+13. [Screenshots](#screenshots)
 14. [Demo Videos](#demo-videos)
 15. [Pitch Deck & Presentation](#pitch-deck--presentation)
-16. [Future Enhancements](#-future-enhancements)
+16. [Future Enhancements](#future-enhancements)
 
 
 ---
@@ -347,7 +345,7 @@ rental-deposit/
 
 ---
 
-## 📝 User Feedback & Responses (User Onbording)
+## 📝 User Feedback & Responses (User Onboarding)
 - [User Feedback Google Form](https://forms.gle/7xPVtErjEJQQMDcw6)
 - [User Responses](https://docs.google.com/spreadsheets/d/1f_zYJWeQhZJD-14bfmcK6Pbhmi8SlrjJbWZywKxbZ1Y/edit?resourcekey=&gid=267224706#gid=267224706)
 - Google Sheets -> [Feedback Iteration Tracker](https://docs.google.com/spreadsheets/d/1f_zYJWeQhZJD-14bfmcK6Pbhmi8SlrjJbWZywKxbZ1Y/edit?resourcekey=&gid=1774659193#gid=1774659193) 
@@ -463,11 +461,14 @@ All user feedback was collected via a [Google Form](https://forms.gle/1s3Abvi6QE
 #### 📸 Deployed Smart Contract Screenshot
 ![Deployed Contract](./assets/deployed-smart-contract-02.png)
 
-#### 📸 UI Screenshot
-![UI Screenshot](./assets/UI-03.png)
+#### 📸 Landing Page UI
+![Landing Page UI Screenshot](./assets/UI-03.png)
 
-#### 📸 Mobile Responsive View
+#### 📸 Mobile Responsive Dashboard View
 ![Mobile Responsive Dashboard View](./assets/mobile-responsive-dashboard-UI.png)
+
+#### 📸 Desktop Dashboard View
+![Desktop Dashboard View](./assets/dashboard-UI-desktop.png)
 
 #### 📸 Test Output
 ![Test Output](./assets/cargo-test-output-04.png)
